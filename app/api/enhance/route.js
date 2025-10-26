@@ -4,7 +4,26 @@ import { adminAuth, adminDb } from '../../../lib/firebase-admin';
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
+// Handle CORS preflight requests
+export async function OPTIONS(request) {
+  return new Response(null, {
+    status: 200,
+    headers: {
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Methods': 'POST, OPTIONS',
+      'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+    },
+  });
+}
+
 export async function POST(request) {
+  // Add CORS headers
+  const headers = {
+    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Methods': 'POST, OPTIONS',
+    'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+  };
+
   try {
     // Get the authorization header
     const authHeader = request.headers.get('authorization');
@@ -77,7 +96,7 @@ User's request to enhance:`;
 
     // Generate enhanced prompt with timeout
     const timeoutPromise = new Promise((_, reject) => 
-      setTimeout(() => reject(new Error('Request timeout')), 25000)
+      setTimeout(() => reject(new Error('Request timeout')), 15000)
     );
     
     const generatePromise = model.generateContent(fullPrompt);
@@ -135,7 +154,7 @@ User's request to enhance:`;
         timestamp: new Date().toISOString(),
         creditsRemaining: 'unlimited',
         subscriptionTier: subscriptionTier,
-      });
+      }, { headers });
     } else {
       // Check if user has enough credits
       if (currentCredits <= 0) {
