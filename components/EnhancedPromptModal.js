@@ -49,7 +49,14 @@ const EnhancedPromptModal = ({
     onClose();
   };
 
-  const improvement = Math.round(((enhancedPrompt.length - originalPrompt.length) / originalPrompt.length) * 100);
+  const improvement = originalPrompt && enhancedPrompt 
+    ? Math.round(((enhancedPrompt.length - originalPrompt.length) / originalPrompt.length) * 100)
+    : 0;
+
+  // Safety check to prevent reference errors
+  if (!originalPrompt || !enhancedPrompt) {
+    return null;
+  }
 
   return (
     <AnimatePresence>

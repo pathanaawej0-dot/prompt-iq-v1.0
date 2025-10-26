@@ -290,7 +290,7 @@ export default function Dashboard() {
 
       {/* Enhanced Prompt Modal */}
       <EnhancedPromptModal
-        isOpen={showResultModal && enhancedPrompt}
+        isOpen={showResultModal}
         onClose={() => setShowResultModal(false)}
         originalPrompt={originalPrompt}
         enhancedPrompt={enhancedPrompt}
