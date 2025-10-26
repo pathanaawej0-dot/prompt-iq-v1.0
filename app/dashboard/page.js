@@ -9,7 +9,6 @@ import Button from '../../components/ui/Button';
 import Card from '../../components/ui/Card';
 import LoadingSpinner from '../../components/ui/LoadingSpinner';
 import EnhancementLoader from '../../components/ui/EnhancementLoader';
-import EnhancedPromptModal from '../../components/EnhancedPromptModal';
 import FeedbackModal from '../../components/FeedbackModal';
 import toast from 'react-hot-toast';
 
@@ -17,7 +16,7 @@ export default function Dashboard() {
   const [originalPrompt, setOriginalPrompt] = useState('');
   const [enhancedPrompt, setEnhancedPrompt] = useState('');
   const [isEnhancing, setIsEnhancing] = useState(false);
-  const [showResultModal, setShowResultModal] = useState(false);
+  const [showResult, setShowResult] = useState(false);
   const [error, setError] = useState('');
   const [showFeedbackModal, setShowFeedbackModal] = useState(false);
   
@@ -76,8 +75,8 @@ export default function Dashboard() {
       // Update local state immediately
       console.log('Enhancement successful:', enhanceData);
       setEnhancedPrompt(enhanceData.enhancedPrompt);
-      setShowResultModal(true);
-      console.log('Modal should open now');
+      setShowResult(true);
+      console.log('Results should show now');
 
       // Update user credits if provided in response
       if (enhanceData.creditsRemaining !== undefined) {
@@ -100,7 +99,7 @@ export default function Dashboard() {
   const handleNewPrompt = () => {
     setOriginalPrompt('');
     setEnhancedPrompt('');
-    setShowResultModal(false);
+    setShowResult(false);
     setError('');
   };
 
@@ -224,6 +223,59 @@ export default function Dashboard() {
             </Card>
           </motion.div>
 
+          {/* Results Section */}
+          {showResult && enhancedPrompt && (
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6, delay: 0.3 }}
+            >
+              <Card>
+                <Card.Header>
+                  <Card.Title className="flex items-center space-x-2">
+                    <Sparkles className="w-5 h-5 text-green-600" />
+                    <span>✨ Enhanced Prompt Ready!</span>
+                  </Card.Title>
+                </Card.Header>
+                <Card.Content>
+                  <div className="space-y-4">
+                    <div className="bg-green-50 p-4 rounded-lg border border-green-200">
+                      <h3 className="font-semibold text-green-800 mb-2">Your Enhanced Prompt:</h3>
+                      <p className="text-gray-800 leading-relaxed">{enhancedPrompt}</p>
+                    </div>
+                    
+                    <div className="flex flex-col sm:flex-row gap-3">
+                      <Button
+                        onClick={async () => {
+                          try {
+                            await navigator.clipboard.writeText(enhancedPrompt);
+                            toast.success('Copied to clipboard!');
+                          } catch (error) {
+                            toast.error('Failed to copy');
+                          }
+                        }}
+                        variant="gradient"
+                        className="flex items-center space-x-2"
+                      >
+                        <Copy className="w-4 h-4" />
+                        <span>Copy Enhanced Prompt</span>
+                      </Button>
+                      
+                      <Button
+                        onClick={handleNewPrompt}
+                        variant="outline"
+                        className="flex items-center space-x-2"
+                      >
+                        <ArrowRight className="w-4 h-4" />
+                        <span>Enhance Another</span>
+                      </Button>
+                    </div>
+                  </div>
+                </Card.Content>
+              </Card>
+            </motion.div>
+          )}
+
           {/* Quick Tips */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -287,15 +339,6 @@ export default function Dashboard() {
           <MessageSquare className="w-6 h-6 group-hover:rotate-12 transition-transform" />
         </button>
       </motion.div>
-
-      {/* Enhanced Prompt Modal */}
-      <EnhancedPromptModal
-        isOpen={showResultModal}
-        onClose={() => setShowResultModal(false)}
-        originalPrompt={originalPrompt}
-        enhancedPrompt={enhancedPrompt}
-        onNewPrompt={handleNewPrompt}
-      />
 
       {/* Feedback Modal */}
       <FeedbackModal
