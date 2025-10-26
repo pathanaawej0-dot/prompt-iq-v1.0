@@ -3,13 +3,14 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Zap, Copy, Clock, ArrowRight, Sparkles, AlertCircle, CreditCard } from 'lucide-react';
+import { Zap, Copy, Clock, ArrowRight, Sparkles, AlertCircle, CreditCard, MessageSquare } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import Button from '../../components/ui/Button';
 import Card from '../../components/ui/Card';
 import LoadingSpinner from '../../components/ui/LoadingSpinner';
 import EnhancementLoader from '../../components/ui/EnhancementLoader';
 import EnhancedPromptCard from '../../components/ui/EnhancedPromptCard';
+import FeedbackModal from '../../components/FeedbackModal';
 import toast from 'react-hot-toast';
 
 export default function Dashboard() {
@@ -18,6 +19,7 @@ export default function Dashboard() {
   const [isEnhancing, setIsEnhancing] = useState(false);
   const [showResult, setShowResult] = useState(false);
   const [error, setError] = useState('');
+  const [showFeedbackModal, setShowFeedbackModal] = useState(false);
   
   const { user, userProfile, loading, updateUserCredits } = useAuth();
   const router = useRouter();
@@ -278,6 +280,28 @@ export default function Dashboard() {
       {isEnhancing && (
         <EnhancementLoader originalPrompt={originalPrompt} />
       )}
+
+      {/* Floating Feedback Button */}
+      <motion.div
+        initial={{ opacity: 0, scale: 0.8 }}
+        animate={{ opacity: 1, scale: 1 }}
+        transition={{ duration: 0.3, delay: 1 }}
+        className="fixed bottom-6 right-6 z-40"
+      >
+        <button
+          onClick={() => setShowFeedbackModal(true)}
+          className="bg-gradient-to-r from-blue-600 to-purple-600 text-white p-4 rounded-full shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-200 group"
+          title="Share Feedback"
+        >
+          <MessageSquare className="w-6 h-6 group-hover:rotate-12 transition-transform" />
+        </button>
+      </motion.div>
+
+      {/* Feedback Modal */}
+      <FeedbackModal
+        isOpen={showFeedbackModal}
+        onClose={() => setShowFeedbackModal(false)}
+      />
     </div>
   );
 }
