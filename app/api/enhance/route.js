@@ -80,6 +80,9 @@ export async function POST(request) {
         { status: 500, headers }
       );
     }
+    
+    console.log('API Key present:', process.env.GEMINI_API_KEY ? 'Yes' : 'No');
+    console.log('API Key length:', process.env.GEMINI_API_KEY?.length || 0);
 
     // Initialize Gemini model
     const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
@@ -101,16 +104,12 @@ User's request to enhance:`;
 
     const fullPrompt = `${systemPrompt}\n\n"${originalPrompt}"`;
 
-    // Generate enhanced prompt with timeout
-    const timeoutPromise = new Promise((_, reject) => 
-      setTimeout(() => reject(new Error('Request timeout')), 15000)
-    );
-    
-    const generatePromise = model.generateContent(fullPrompt);
-    
-    const result = await Promise.race([generatePromise, timeoutPromise]);
+    // Generate enhanced prompt
+    console.log('Calling Gemini API with prompt:', originalPrompt);
+    const result = await model.generateContent(fullPrompt);
     const response = await result.response;
     const enhancedPrompt = response.text();
+    console.log('Gemini API response received:', enhancedPrompt ? 'Success' : 'Empty');
 
     if (!enhancedPrompt || enhancedPrompt.trim().length === 0) {
       return NextResponse.json(
@@ -246,7 +245,12 @@ User's request to enhance:`;
     }
 
   } catch (error) {
-    console.error('Enhancement error:', error);
+    console.error('Enhancement error details:', {
+      message: error.message,
+      stack: error.stack,
+      name: error.name,
+      code: error.code
+    });
     
     // Handle specific Gemini API errors
     if (error.message?.includes('API_KEY')) {
