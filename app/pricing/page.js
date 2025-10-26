@@ -7,7 +7,7 @@ import { Check, Zap, Crown, Rocket, Star, ArrowRight } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import Button from '../../components/ui/Button';
 import Card from '../../components/ui/Card';
-import PaymentModal from '../../components/PaymentModal';
+import ComingSoonModal from '../../components/ComingSoonModal';
 
 export default function Pricing() {
   const [billingCycle, setBillingCycle] = useState('monthly');
@@ -421,8 +421,8 @@ export default function Pricing() {
         </motion.div>
       </div>
 
-      {/* Payment Modal */}
-      <PaymentModal
+      {/* Coming Soon Modal */}
+      <ComingSoonModal
         isOpen={paymentModal.isOpen}
         onClose={() => setPaymentModal({ isOpen: false, planId: null })}
         planId={paymentModal.planId}
