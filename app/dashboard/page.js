@@ -9,7 +9,7 @@ import Button from '../../components/ui/Button';
 import Card from '../../components/ui/Card';
 import LoadingSpinner from '../../components/ui/LoadingSpinner';
 import EnhancementLoader from '../../components/ui/EnhancementLoader';
-import EnhancedPromptCard from '../../components/ui/EnhancedPromptCard';
+import EnhancedPromptModal from '../../components/EnhancedPromptModal';
 import FeedbackModal from '../../components/FeedbackModal';
 import toast from 'react-hot-toast';
 
@@ -17,7 +17,7 @@ export default function Dashboard() {
   const [originalPrompt, setOriginalPrompt] = useState('');
   const [enhancedPrompt, setEnhancedPrompt] = useState('');
   const [isEnhancing, setIsEnhancing] = useState(false);
-  const [showResult, setShowResult] = useState(false);
+  const [showResultModal, setShowResultModal] = useState(false);
   const [error, setError] = useState('');
   const [showFeedbackModal, setShowFeedbackModal] = useState(false);
   
@@ -75,7 +75,7 @@ export default function Dashboard() {
 
       // Update local state immediately
       setEnhancedPrompt(enhanceData.enhancedPrompt);
-      setShowResult(true);
+      setShowResultModal(true);
 
       // Update user credits if provided in response
       if (enhanceData.creditsRemaining !== undefined) {
@@ -98,7 +98,7 @@ export default function Dashboard() {
   const handleNewPrompt = () => {
     setOriginalPrompt('');
     setEnhancedPrompt('');
-    setShowResult(false);
+    setShowResultModal(false);
     setError('');
   };
 
@@ -222,17 +222,6 @@ export default function Dashboard() {
             </Card>
           </motion.div>
 
-          {/* Result Section */}
-          <AnimatePresence>
-            {showResult && enhancedPrompt && (
-              <EnhancedPromptCard
-                originalPrompt={originalPrompt}
-                enhancedPrompt={enhancedPrompt}
-                onNewPrompt={handleNewPrompt}
-              />
-            )}
-          </AnimatePresence>
-
           {/* Quick Tips */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -296,6 +285,15 @@ export default function Dashboard() {
           <MessageSquare className="w-6 h-6 group-hover:rotate-12 transition-transform" />
         </button>
       </motion.div>
+
+      {/* Enhanced Prompt Modal */}
+      <EnhancedPromptModal
+        isOpen={showResultModal}
+        onClose={() => setShowResultModal(false)}
+        originalPrompt={originalPrompt}
+        enhancedPrompt={enhancedPrompt}
+        onNewPrompt={handleNewPrompt}
+      />
 
       {/* Feedback Modal */}
       <FeedbackModal
