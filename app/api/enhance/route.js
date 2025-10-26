@@ -110,11 +110,39 @@ User's request to enhance:`;
     const currentCredits = userData.credits || 0;
     const subscriptionTier = userData.subscriptionTier || 'free';
 
-    // LAUNCH PERIOD: Give everyone unlimited access temporarily
+    // LAUNCH PERIOD: Give everyone high credits during launch
     const isLaunchPeriod = true; // Set to false after launch period
+    
+    // Ensure users have enough credits during launch period
+    if (isLaunchPeriod && currentCredits < 100) {
+      // Give users 1000 credits during launch period
+      await userRef.update({ credits: 1000 });
+      const updatedCredits = 1000;
+      
+      // Save to history and deduct 1 credit to show realistic behavior
+      await adminDb.runTransaction(async (transaction) => {
+        transaction.update(userRef, { credits: updatedCredits - 1 });
+        transaction.set(adminDb.collection('prompts').doc(), {
+          uid: userId,
+          originalPrompt: originalPrompt.trim(),
+          enhancedPrompt: cleanedPrompt,
+          timestamp: new Date(),
+          creditsUsed: 1,
+        });
+      });
+
+      return NextResponse.json({
+        success: true,
+        originalPrompt: originalPrompt.trim(),
+        enhancedPrompt: cleanedPrompt,
+        timestamp: new Date().toISOString(),
+        creditsRemaining: updatedCredits - 1,
+        subscriptionTier: 'launch_bonus',
+      });
+    }
 
     // Handle credit deduction and history saving
-    if (subscriptionTier === 'ultimate' || isLaunchPeriod) {
+    if (subscriptionTier === 'ultimate') {
       // Save to history without deducting credits for ultimate users
       await adminDb.collection('prompts').add({
         uid: userId,
@@ -129,8 +157,8 @@ User's request to enhance:`;
         originalPrompt: originalPrompt.trim(),
         enhancedPrompt: cleanedPrompt,
         timestamp: new Date().toISOString(),
-        creditsRemaining: isLaunchPeriod ? 'unlimited' : 'unlimited',
-        subscriptionTier: isLaunchPeriod ? 'launch_unlimited' : subscriptionTier,
+        creditsRemaining: 'unlimited',
+        subscriptionTier: subscriptionTier,
       });
     } else {
       // Check if user has enough credits

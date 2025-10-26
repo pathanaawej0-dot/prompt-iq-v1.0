@@ -36,19 +36,22 @@ export const AuthProvider = ({ children }) => {
       const userSnap = await getDoc(userRef);
       
       if (!userSnap.exists()) {
+        // Launch period: Give new users 1000 credits
+        const launchCredits = 1000;
+        
         await setDoc(userRef, {
           uid: user.uid,
           email: user.email,
-          credits: 3, // Free credits for new users
-          subscriptionTier: 'free',
+          credits: launchCredits, // Launch bonus credits
+          subscriptionTier: 'launch_bonus',
           createdAt: new Date(),
         });
         
         return {
           uid: user.uid,
           email: user.email,
-          credits: 3,
-          subscriptionTier: 'free',
+          credits: launchCredits,
+          subscriptionTier: 'launch_bonus',
           createdAt: new Date(),
         };
       } else {
