@@ -40,7 +40,7 @@ export default function Dashboard() {
     }
 
     // Check credits for non-ultimate users
-    if (userProfile?.subscriptionTier !== 'ultimate' && userProfile?.subscriptionTier !== 'launch_bonus' && userProfile?.credits <= 0) {
+    if (userProfile?.subscriptionTier !== 'ultimate' && userProfile?.credits <= 0) {
       toast.error('You have no credits left. Please upgrade your plan.');
       return;
     }
@@ -112,7 +112,7 @@ export default function Dashboard() {
     return null; // Will redirect in useEffect
   }
 
-  const canEnhance = userProfile?.subscriptionTier === 'ultimate' || userProfile?.subscriptionTier === 'launch_bonus' || (userProfile?.credits > 0);
+  const canEnhance = userProfile?.subscriptionTier === 'ultimate' || (userProfile?.credits > 0);
 
   return (
     <div className="min-h-screen py-8">
