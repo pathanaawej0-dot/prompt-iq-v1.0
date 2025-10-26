@@ -110,8 +110,11 @@ User's request to enhance:`;
     const currentCredits = userData.credits || 0;
     const subscriptionTier = userData.subscriptionTier || 'free';
 
+    // LAUNCH PERIOD: Give everyone unlimited access temporarily
+    const isLaunchPeriod = true; // Set to false after launch period
+
     // Handle credit deduction and history saving
-    if (subscriptionTier === 'ultimate') {
+    if (subscriptionTier === 'ultimate' || isLaunchPeriod) {
       // Save to history without deducting credits for ultimate users
       await adminDb.collection('prompts').add({
         uid: userId,
@@ -126,8 +129,8 @@ User's request to enhance:`;
         originalPrompt: originalPrompt.trim(),
         enhancedPrompt: cleanedPrompt,
         timestamp: new Date().toISOString(),
-        creditsRemaining: 'unlimited',
-        subscriptionTier,
+        creditsRemaining: isLaunchPeriod ? 'unlimited' : 'unlimited',
+        subscriptionTier: isLaunchPeriod ? 'launch_unlimited' : subscriptionTier,
       });
     } else {
       // Check if user has enough credits

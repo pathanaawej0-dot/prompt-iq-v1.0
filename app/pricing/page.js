@@ -174,6 +174,27 @@ export default function Pricing() {
           </div>
         </motion.div>
 
+        {/* Coming Soon Banner */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6, delay: 0.2 }}
+          className="mb-12"
+        >
+          <div className="bg-gradient-to-r from-orange-50 to-yellow-50 border border-orange-200 rounded-lg p-6 text-center">
+            <div className="flex items-center justify-center space-x-2 mb-2">
+              <Rocket className="w-6 h-6 text-orange-600" />
+              <h3 className="text-xl font-bold text-orange-800">Payments Coming Soon!</h3>
+            </div>
+            <p className="text-orange-700 mb-4">
+              We're finalizing our payment integration. Premium plans will be available very soon!
+            </p>
+            <div className="text-sm text-orange-600 font-medium">
+              🎉 For now, enjoy unlimited free enhancements while we prepare for launch!
+            </div>
+          </div>
+        </motion.div>
+
         {/* Pricing Cards */}
         <div className="grid lg:grid-cols-4 gap-8 mb-16">
           {plans.map((plan, index) => (
