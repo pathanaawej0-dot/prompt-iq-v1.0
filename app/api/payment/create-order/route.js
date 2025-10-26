@@ -2,13 +2,25 @@ import { NextResponse } from 'next/server';
 import Razorpay from 'razorpay';
 import { adminAuth } from '../../../../lib/firebase-admin';
 
-const razorpay = new Razorpay({
-  key_id: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID,
-  key_secret: process.env.RAZORPAY_KEY_SECRET,
-});
+let razorpay;
+try {
+  razorpay = new Razorpay({
+    key_id: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID || 'rzp_test_placeholder',
+    key_secret: process.env.RAZORPAY_KEY_SECRET || 'test_secret_placeholder',
+  });
+} catch (error) {
+  console.log('Razorpay initialization skipped during build');
+}
 
 export async function POST(request) {
   try {
+    // Check if Razorpay is properly initialized
+    if (!razorpay) {
+      return NextResponse.json(
+        { error: 'Payment service not available. Please contact support.' },
+        { status: 503 }
+      );
+    }
     // Get the authorization header
     const authHeader = request.headers.get('authorization');
     if (!authHeader || !authHeader.startsWith('Bearer ')) {

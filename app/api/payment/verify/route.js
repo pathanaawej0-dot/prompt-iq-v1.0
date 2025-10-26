@@ -42,9 +42,17 @@ export async function POST(request) {
     }
 
     // Verify payment signature
+    const razorpaySecret = process.env.RAZORPAY_KEY_SECRET;
+    if (!razorpaySecret || razorpaySecret === 'test_secret_placeholder') {
+      return NextResponse.json(
+        { error: 'Payment service not configured. Please contact support.' },
+        { status: 503 }
+      );
+    }
+    
     const body = razorpay_order_id + '|' + razorpay_payment_id;
     const expectedSignature = crypto
-      .createHmac('sha256', process.env.RAZORPAY_KEY_SECRET)
+      .createHmac('sha256', razorpaySecret)
       .update(body.toString())
       .digest('hex');
 
