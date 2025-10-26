@@ -18,7 +18,6 @@ export default function Dashboard() {
   const [isEnhancing, setIsEnhancing] = useState(false);
   const [showResult, setShowResult] = useState(false);
   const [error, setError] = useState('');
-  const [isSaving, setIsSaving] = useState(false);
   
   const { user, userProfile, loading, updateUserCredits } = useAuth();
   const router = useRouter();
@@ -76,7 +75,12 @@ export default function Dashboard() {
       setEnhancedPrompt(enhanceData.enhancedPrompt);
       setShowResult(true);
 
-      toast.success('Prompt enhanced successfully!');
+      // Update user credits if provided in response
+      if (enhanceData.creditsRemaining !== undefined) {
+        updateUserCredits(enhanceData.creditsRemaining);
+      }
+
+      toast.success('Prompt enhanced and saved to history!');
 
     } catch (error) {
       console.error('Enhancement error:', error);
@@ -88,38 +92,6 @@ export default function Dashboard() {
     }
   };
 
-  const handleSaveToHistory = async () => {
-    if (!enhancedPrompt || !originalPrompt) return;
-    
-    setIsSaving(true);
-    try {
-      const token = await user.getIdToken();
-      
-      const response = await fetch('/api/credits/deduct', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          originalPrompt: originalPrompt.trim(),
-          enhancedPrompt: enhancedPrompt.trim(),
-        }),
-      });
-
-      if (response.ok) {
-        toast.success('Prompt saved to history!');
-        router.push('/history');
-      } else {
-        toast.error('Failed to save to history');
-      }
-    } catch (error) {
-      console.error('Save error:', error);
-      toast.error('Failed to save to history');
-    } finally {
-      setIsSaving(false);
-    }
-  };
 
   const handleNewPrompt = () => {
     setOriginalPrompt('');
@@ -254,9 +226,7 @@ export default function Dashboard() {
               <EnhancedPromptCard
                 originalPrompt={originalPrompt}
                 enhancedPrompt={enhancedPrompt}
-                onSaveToHistory={handleSaveToHistory}
                 onNewPrompt={handleNewPrompt}
-                isSaving={isSaving}
               />
             )}
           </AnimatePresence>

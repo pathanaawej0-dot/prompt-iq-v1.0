@@ -10,9 +10,7 @@ import toast from 'react-hot-toast';
 const EnhancedPromptCard = ({ 
   originalPrompt, 
   enhancedPrompt, 
-  onSaveToHistory, 
-  onNewPrompt,
-  isSaving = false 
+  onNewPrompt
 }) => {
   const [copied, setCopied] = useState(false);
 
@@ -153,16 +151,10 @@ const EnhancedPromptCard = ({
           )}
         </Button>
 
-        <Button
-          onClick={onSaveToHistory}
-          variant="outline"
-          size="lg"
-          className="flex items-center justify-center space-x-2"
-          disabled={isSaving}
-        >
-          <Save className="w-5 h-5" />
-          <span>{isSaving ? 'Saving...' : 'Save to History'}</span>
-        </Button>
+        <div className="flex items-center justify-center space-x-2 px-4 py-2 bg-green-50 rounded-lg border border-green-200">
+          <CheckCircle className="w-5 h-5 text-green-600" />
+          <span className="text-sm font-medium text-green-700">Automatically saved to history</span>
+        </div>
 
         <Button
           onClick={onNewPrompt}

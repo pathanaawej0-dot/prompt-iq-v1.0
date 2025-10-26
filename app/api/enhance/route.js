@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { GoogleGenerativeAI } from '@google/generative-ai';
-import { adminAuth } from '../../../lib/firebase-admin';
+import { adminAuth, adminDb } from '../../../lib/firebase-admin';
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
@@ -93,12 +93,124 @@ User's request to enhance:`;
       cleanedPrompt = cleanedPrompt.slice(1, -1);
     }
 
-    return NextResponse.json({
-      success: true,
-      originalPrompt: originalPrompt.trim(),
-      enhancedPrompt: cleanedPrompt,
-      timestamp: new Date().toISOString(),
-    });
+    const userId = decodedToken.uid;
+
+    // Get user document to check credits and subscription
+    const userRef = adminDb.collection('users').doc(userId);
+    const userDoc = await userRef.get();
+
+    if (!userDoc.exists) {
+      return NextResponse.json(
+        { error: 'User not found' },
+        { status: 404 }
+      );
+    }
+
+    const userData = userDoc.data();
+    const currentCredits = userData.credits || 0;
+    const subscriptionTier = userData.subscriptionTier || 'free';
+
+    // Handle credit deduction and history saving
+    if (subscriptionTier === 'ultimate') {
+      // Save to history without deducting credits for ultimate users
+      await adminDb.collection('prompts').add({
+        uid: userId,
+        originalPrompt: originalPrompt.trim(),
+        enhancedPrompt: cleanedPrompt,
+        timestamp: new Date(),
+        creditsUsed: 0,
+      });
+
+      return NextResponse.json({
+        success: true,
+        originalPrompt: originalPrompt.trim(),
+        enhancedPrompt: cleanedPrompt,
+        timestamp: new Date().toISOString(),
+        creditsRemaining: 'unlimited',
+        subscriptionTier,
+      });
+    } else {
+      // Check if user has enough credits
+      if (currentCredits <= 0) {
+        return NextResponse.json(
+          { 
+            error: 'Insufficient credits. Please upgrade your plan to continue.',
+            creditsRemaining: 0,
+            subscriptionTier,
+            needsUpgrade: true,
+          },
+          { status: 402 }
+        );
+      }
+
+      // Use transaction to deduct credits and save to history
+      try {
+        const newCredits = await adminDb.runTransaction(async (transaction) => {
+          // Re-read user document in transaction
+          const userSnapshot = await transaction.get(userRef);
+          
+          if (!userSnapshot.exists) {
+            throw new Error('User not found');
+          }
+
+          const currentUserData = userSnapshot.data();
+          const currentUserCredits = currentUserData.credits || 0;
+
+          // Double-check credits in transaction
+          if (currentUserCredits <= 0) {
+            throw new Error('Insufficient credits');
+          }
+
+          const updatedCredits = currentUserCredits - 1;
+
+          // Update user credits
+          transaction.update(userRef, {
+            credits: updatedCredits,
+          });
+
+          // Add prompt to history
+          const promptRef = adminDb.collection('prompts').doc();
+          transaction.set(promptRef, {
+            uid: userId,
+            originalPrompt: originalPrompt.trim(),
+            enhancedPrompt: cleanedPrompt,
+            timestamp: new Date(),
+            creditsUsed: 1,
+          });
+
+          return updatedCredits;
+        });
+
+        return NextResponse.json({
+          success: true,
+          originalPrompt: originalPrompt.trim(),
+          enhancedPrompt: cleanedPrompt,
+          timestamp: new Date().toISOString(),
+          creditsRemaining: newCredits,
+          subscriptionTier,
+        });
+
+      } catch (transactionError) {
+        console.error('Transaction error:', transactionError);
+        
+        if (transactionError.message === 'Insufficient credits') {
+          return NextResponse.json(
+            { 
+              error: 'Insufficient credits. Please upgrade your plan to continue.',
+              creditsRemaining: 0,
+              subscriptionTier,
+              needsUpgrade: true,
+            },
+            { status: 402 }
+          );
+        }
+
+        return NextResponse.json(
+          { error: 'Failed to process request. Please try again.' },
+          { status: 500 }
+        );
+      }
+    }
 
   } catch (error) {
     console.error('Enhancement error:', error);
