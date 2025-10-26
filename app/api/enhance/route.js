@@ -30,7 +30,7 @@ export async function POST(request) {
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
       return NextResponse.json(
         { error: 'Unauthorized - No valid token provided' },
-        { status: 401 }
+        { status: 401, headers }
       );
     }
 
@@ -44,7 +44,7 @@ export async function POST(request) {
       console.error('Token verification error:', error);
       return NextResponse.json(
         { error: 'Unauthorized - Invalid token' },
-        { status: 401 }
+        { status: 401, headers }
       );
     }
 
@@ -54,14 +54,21 @@ export async function POST(request) {
     if (!originalPrompt || originalPrompt.trim().length === 0) {
       return NextResponse.json(
         { error: 'Original prompt is required' },
-        { status: 400 }
+        { status: 400, headers }
+      );
+    }
+
+    if (originalPrompt.trim().length < 10) {
+      return NextResponse.json(
+        { error: 'Prompt must be at least 10 characters long' },
+        { status: 400, headers }
       );
     }
 
     if (originalPrompt.length > 2000) {
       return NextResponse.json(
         { error: 'Prompt is too long. Please keep it under 2000 characters.' },
-        { status: 400 }
+        { status: 400, headers }
       );
     }
 
@@ -70,7 +77,7 @@ export async function POST(request) {
       console.error('Gemini API key not configured');
       return NextResponse.json(
         { error: 'AI service temporarily unavailable. Please try again later.' },
-        { status: 500 }
+        { status: 500, headers }
       );
     }
 
@@ -108,7 +115,7 @@ User's request to enhance:`;
     if (!enhancedPrompt || enhancedPrompt.trim().length === 0) {
       return NextResponse.json(
         { error: 'Failed to generate enhanced prompt. Please try again.' },
-        { status: 500 }
+        { status: 500, headers }
       );
     }
 
@@ -127,7 +134,7 @@ User's request to enhance:`;
     if (!userDoc.exists) {
       return NextResponse.json(
         { error: 'User not found' },
-        { status: 404 }
+        { status: 404, headers }
       );
     }
 
@@ -165,7 +172,7 @@ User's request to enhance:`;
             subscriptionTier,
             needsUpgrade: true,
           },
-          { status: 402 }
+          { status: 402, headers }
         );
       }
 
@@ -214,7 +221,7 @@ User's request to enhance:`;
           timestamp: new Date().toISOString(),
           creditsRemaining: newCredits,
           subscriptionTier,
-        });
+        }, { headers });
 
       } catch (transactionError) {
         console.error('Transaction error:', transactionError);
@@ -227,13 +234,13 @@ User's request to enhance:`;
               subscriptionTier,
               needsUpgrade: true,
             },
-            { status: 402 }
+            { status: 402, headers }
           );
         }
 
         return NextResponse.json(
           { error: 'Failed to process request. Please try again.' },
-          { status: 500 }
+          { status: 500, headers }
         );
       }
     }
@@ -245,27 +252,27 @@ User's request to enhance:`;
     if (error.message?.includes('API_KEY')) {
       return NextResponse.json(
         { error: 'AI service configuration error. Please contact support.' },
-        { status: 500 }
+        { status: 500, headers }
       );
     }
     
     if (error.message?.includes('quota') || error.message?.includes('limit')) {
       return NextResponse.json(
         { error: 'AI service temporarily overloaded. Please try again in a moment.' },
-        { status: 429 }
+        { status: 429, headers }
       );
     }
 
     if (error.message?.includes('safety') || error.message?.includes('blocked')) {
       return NextResponse.json(
         { error: 'Content not suitable for enhancement. Please try a different prompt.' },
-        { status: 400 }
+        { status: 400, headers }
       );
     }
 
     return NextResponse.json(
       { error: 'Failed to enhance prompt. Please try again later.' },
-      { status: 500 }
+      { status: 500, headers }
     );
   }
 }
