@@ -3,34 +3,32 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Mail, Rocket, Bell, CheckCircle } from 'lucide-react';
+import { useAuth } from '../contexts/AuthContext';
 import Button from './ui/Button';
 import toast from 'react-hot-toast';
 
-const ComingSoonModal = ({ isOpen, onClose, planId, billingCycle = 'monthly' }) => {
+const ComingSoonModal = ({ isOpen, onClose, planId }) => {
   const [email, setEmail] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSubmitted, setIsSubmitted] = useState(false);
+  const { user } = useAuth();
 
   const plans = {
     starter: {
       name: 'Starter Plan',
-      monthly: 99,
-      yearly: 950,
+      price: 99,
       credits: 50,
       description: 'Perfect for individuals',
     },
     pro: {
       name: 'Pro Plan',
-      monthly: 299,
-      yearly: 2870,
+      price: 299,
       credits: 200,
       description: 'Great for professionals',
     },
   };
 
   const selectedPlan = plans[planId];
-  const amount = selectedPlan?.[billingCycle];
-  const savings = billingCycle === 'yearly' ? Math.round((selectedPlan.monthly * 12 - selectedPlan.yearly)) : 0;
 
   const handleEmailSubmit = async (e) => {
     e.preventDefault();
@@ -43,23 +41,43 @@ const ComingSoonModal = ({ isOpen, onClose, planId, billingCycle = 'monthly' }) 
     setIsSubmitting(true);
 
     try {
-      // Here you would normally send to your backend
-      // For now, we'll just simulate the submission
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      setIsSubmitted(true);
-      toast.success('Thank you! We\'ll notify you when payments are available.');
-      
-      // Auto close after 2 seconds
-      setTimeout(() => {
-        onClose();
-        setIsSubmitted(false);
-        setEmail('');
-      }, 2000);
+      // Get Firebase token if user is authenticated
+      let token = null;
+      if (user) {
+        token = await user.getIdToken();
+      }
+
+      const response = await fetch('/api/email-subscription', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token && { 'Authorization': `Bearer ${token}` }),
+        },
+        body: JSON.stringify({
+          email: email.trim(),
+          planId: planId,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        setIsSubmitted(true);
+        toast.success('Thank you! We\'ll notify you when payments are available.');
+        
+        // Auto close after 2 seconds
+        setTimeout(() => {
+          onClose();
+          setIsSubmitted(false);
+          setEmail('');
+        }, 2000);
+      } else {
+        throw new Error(data.error || 'Failed to submit email');
+      }
 
     } catch (error) {
       console.error('Email submission error:', error);
-      toast.error('Failed to submit email. Please try again.');
+      toast.error(error.message || 'Failed to submit email. Please try again.');
     } finally {
       setIsSubmitting(false);
     }
@@ -145,16 +163,11 @@ const ComingSoonModal = ({ isOpen, onClose, planId, billingCycle = 'monthly' }) 
                     <div className="flex items-center justify-between">
                       <div>
                         <div className="text-2xl font-bold text-gray-900">
-                          ₹{amount}
+                          ₹{selectedPlan.price}
                           <span className="text-sm font-normal text-gray-600">
-                            /{billingCycle === 'yearly' ? 'year' : 'month'}
+                            /month
                           </span>
                         </div>
-                        {billingCycle === 'yearly' && savings > 0 && (
-                          <div className="text-sm text-green-600 font-medium">
-                            Save ₹{savings} per year
-                          </div>
-                        )}
                       </div>
                       <div className="text-right">
                         <div className="text-sm text-gray-600">Credits</div>

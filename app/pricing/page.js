@@ -10,7 +10,6 @@ import Card from '../../components/ui/Card';
 import ComingSoonModal from '../../components/ComingSoonModal';
 
 export default function Pricing() {
-  const [billingCycle, setBillingCycle] = useState('monthly');
   const [paymentModal, setPaymentModal] = useState({ isOpen: false, planId: null });
   const { user } = useAuth();
 
@@ -146,32 +145,6 @@ export default function Pricing() {
             Start free and upgrade as you grow.
           </p>
 
-          {/* Billing Toggle */}
-          <div className="inline-flex items-center bg-gray-100 rounded-lg p-1">
-            <button
-              onClick={() => setBillingCycle('monthly')}
-              className={`px-4 py-2 rounded-md text-sm font-medium transition-all duration-200 ${
-                billingCycle === 'monthly'
-                  ? 'bg-white text-gray-900 shadow-sm'
-                  : 'text-gray-600 hover:text-gray-900'
-              }`}
-            >
-              Monthly
-            </button>
-            <button
-              onClick={() => setBillingCycle('yearly')}
-              className={`px-4 py-2 rounded-md text-sm font-medium transition-all duration-200 ${
-                billingCycle === 'yearly'
-                  ? 'bg-white text-gray-900 shadow-sm'
-                  : 'text-gray-600 hover:text-gray-900'
-              }`}
-            >
-              Yearly
-              <span className="ml-1 text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full">
-                Save 20%
-              </span>
-            </button>
-          </div>
         </motion.div>
 
         {/* Coming Soon Banner */}
@@ -243,21 +216,12 @@ export default function Pricing() {
                     <div className="mb-6">
                       <div className="flex items-baseline justify-center">
                         <span className="text-4xl font-bold text-gray-900">
-                          {formatPrice(
-                            billingCycle === 'yearly' && plan.price > 0 
-                              ? Math.round(plan.price * 0.8) 
-                              : plan.price
-                          )}
+                          {formatPrice(plan.price)}
                         </span>
                         {plan.price > 0 && (
                           <span className="text-gray-600 ml-1">/month</span>
                         )}
                       </div>
-                      {billingCycle === 'yearly' && plan.price > 0 && (
-                        <p className="text-sm text-green-600 mt-1">
-                          Save ₹{Math.round(plan.price * 0.2 * 12)} per year
-                        </p>
-                      )}
                       <p className="text-sm text-gray-600 mt-2">
                         {plan.credits === 'unlimited' 
                           ? 'Unlimited enhancements' 
@@ -426,7 +390,6 @@ export default function Pricing() {
         isOpen={paymentModal.isOpen}
         onClose={() => setPaymentModal({ isOpen: false, planId: null })}
         planId={paymentModal.planId}
-        billingCycle={billingCycle}
       />
     </div>
   );
