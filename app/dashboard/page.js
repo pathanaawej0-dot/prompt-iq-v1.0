@@ -74,8 +74,10 @@ export default function Dashboard() {
       }
 
       // Update local state immediately
+      console.log('Enhancement successful:', enhanceData);
       setEnhancedPrompt(enhanceData.enhancedPrompt);
       setShowResultModal(true);
+      console.log('Modal should open now');
 
       // Update user credits if provided in response
       if (enhanceData.creditsRemaining !== undefined) {
@@ -288,7 +290,7 @@ export default function Dashboard() {
 
       {/* Enhanced Prompt Modal */}
       <EnhancedPromptModal
-        isOpen={showResultModal}
+        isOpen={showResultModal && enhancedPrompt}
         onClose={() => setShowResultModal(false)}
         originalPrompt={originalPrompt}
         enhancedPrompt={enhancedPrompt}

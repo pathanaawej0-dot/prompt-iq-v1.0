@@ -56,7 +56,7 @@ export async function POST(request) {
     }
 
     // Initialize Gemini model
-    const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+    const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
 
     // System prompt for enhancement
     const systemPrompt = `You are an expert prompt enhancer. Transform the user's basic request into a detailed, professional, ready-to-use prompt that can be directly copied and pasted to any AI model.
