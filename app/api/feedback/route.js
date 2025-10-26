@@ -48,7 +48,7 @@ export async function POST(request) {
     const userRef = adminDb.collection('users').doc(userId);
     const userDoc = await userRef.get();
     
-    const userData = userDoc.exists() ? userDoc.data() : {};
+    const userData = userDoc.exists ? userDoc.data() : {};
 
     // Save feedback to Firebase
     await adminDb.collection('feedback').add({
