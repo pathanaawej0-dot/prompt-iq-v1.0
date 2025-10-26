@@ -13,7 +13,7 @@
     "firebase": "^10.14.1",
     "firebase-admin": "^12.7.0",
     "framer-motion": "^11.11.0",
-    "lucide-react": "^0.294.0",
+    "lucide-react": "^0.460.0",
     "next": "16.0.0",
     "razorpay": "^2.9.2",
     "react": "19.2.0",
@@ -28,6 +28,14 @@
   },
   "overrides": {
     "framer-motion": {
+      "react": "19.2.0",
+      "react-dom": "19.2.0"
+    },
+    "lucide-react": {
+      "react": "19.2.0",
+      "react-dom": "19.2.0"
+    },
+    "react-hot-toast": {
       "react": "19.2.0",
       "react-dom": "19.2.0"
     }
