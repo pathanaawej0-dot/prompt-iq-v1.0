@@ -1,0 +1,133 @@
+import { NextResponse } from 'next/server';
+import { GoogleGenerativeAI } from '@google/generative-ai';
+import { adminAuth } from '../../../lib/firebase-admin';
+
+const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+
+export async function POST(request) {
+  try {
+    // Get the authorization header
+    const authHeader = request.headers.get('authorization');
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return NextResponse.json(
+        { error: 'Unauthorized - No valid token provided' },
+        { status: 401 }
+      );
+    }
+
+    const token = authHeader.split('Bearer ')[1];
+    
+    // Verify the Firebase token
+    let decodedToken;
+    try {
+      decodedToken = await adminAuth.verifyIdToken(token);
+    } catch (error) {
+      console.error('Token verification error:', error);
+      return NextResponse.json(
+        { error: 'Unauthorized - Invalid token' },
+        { status: 401 }
+      );
+    }
+
+    // Get the request body
+    const { originalPrompt } = await request.json();
+
+    if (!originalPrompt || originalPrompt.trim().length === 0) {
+      return NextResponse.json(
+        { error: 'Original prompt is required' },
+        { status: 400 }
+      );
+    }
+
+    if (originalPrompt.length > 2000) {
+      return NextResponse.json(
+        { error: 'Prompt is too long. Please keep it under 2000 characters.' },
+        { status: 400 }
+      );
+    }
+
+    // Check if Gemini API key is configured
+    if (!process.env.GEMINI_API_KEY) {
+      console.error('Gemini API key not configured');
+      return NextResponse.json(
+        { error: 'AI service temporarily unavailable. Please try again later.' },
+        { status: 500 }
+      );
+    }
+
+    // Initialize Gemini model
+    const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
+
+    // System prompt for enhancement
+    const systemPrompt = `You are an expert prompt enhancer. Transform the user's basic request into a detailed, professional, ready-to-use prompt that can be directly copied and pasted to any AI model.
+
+Guidelines:
+- Create a DIRECT prompt that starts with "You are..." or "Your task is..."
+- Make it immediately usable - no meta-instructions
+- Include specific role, task, context, and output format
+- Add relevant constraints and guidelines
+- Make it comprehensive and action-oriented
+- Structure it professionally with clear sections
+
+Return ONLY the final enhanced prompt - ready to copy and paste.
+
+User's request to enhance:`;
+
+    const fullPrompt = `${systemPrompt}\n\n"${originalPrompt}"`;
+
+    // Generate enhanced prompt
+    const result = await model.generateContent(fullPrompt);
+    const response = await result.response;
+    const enhancedPrompt = response.text();
+
+    if (!enhancedPrompt || enhancedPrompt.trim().length === 0) {
+      return NextResponse.json(
+        { error: 'Failed to generate enhanced prompt. Please try again.' },
+        { status: 500 }
+      );
+    }
+
+    // Clean up the response (remove quotes if they wrap the entire response)
+    let cleanedPrompt = enhancedPrompt.trim();
+    if (cleanedPrompt.startsWith('"') && cleanedPrompt.endsWith('"')) {
+      cleanedPrompt = cleanedPrompt.slice(1, -1);
+    }
+
+    return NextResponse.json({
+      success: true,
+      originalPrompt: originalPrompt.trim(),
+      enhancedPrompt: cleanedPrompt,
+      timestamp: new Date().toISOString(),
+    });
+
+  } catch (error) {
+    console.error('Enhancement error:', error);
+    
+    // Handle specific Gemini API errors
+    if (error.message?.includes('API_KEY')) {
+      return NextResponse.json(
+        { error: 'AI service configuration error. Please contact support.' },
+        { status: 500 }
+      );
+    }
+    
+    if (error.message?.includes('quota') || error.message?.includes('limit')) {
+      return NextResponse.json(
+        { error: 'AI service temporarily overloaded. Please try again in a moment.' },
+        { status: 429 }
+      );
+    }
+
+    if (error.message?.includes('safety') || error.message?.includes('blocked')) {
+      return NextResponse.json(
+        { error: 'Content not suitable for enhancement. Please try a different prompt.' },
+        { status: 400 }
+      );
+    }
+
+    return NextResponse.json(
+      { error: 'Failed to enhance prompt. Please try again later.' },
+      { status: 500 }
+    );
+  }
+}

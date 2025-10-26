@@ -1,0 +1,34 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Users collection - users can only access their own data
+    match /users/{userId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+    
+    // Prompts collection - users can only access their own prompts
+    match /prompts/{promptId} {
+      // Allow read/write for individual documents where user owns the prompt
+      allow read, write: if request.auth != null && request.auth.uid == resource.data.uid;
+      // Allow create when user is creating their own prompt
+      allow create: if request.auth != null && request.auth.uid == request.resource.data.uid;
+    }
+    
+    // Allow querying prompts collection for authenticated users
+    match /prompts/{document=**} {
+      allow read: if request.auth != null;
+    }
+    
+    // Payments collection - users can only read their own payment records
+    match /payments/{paymentId} {
+      allow read: if request.auth != null && request.auth.uid == resource.data.userId;
+      // Only server can write payment records
+      allow write: if false;
+    }
+    
+    // Deny all other access
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
