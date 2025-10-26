@@ -56,7 +56,7 @@ export async function POST(request) {
     }
 
     // Initialize Gemini model
-    const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
+    const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
 
     // System prompt for enhancement
     const systemPrompt = `You are an expert prompt enhancer. Transform the user's basic request into a detailed, professional, ready-to-use prompt that can be directly copied and pasted to any AI model.
@@ -75,8 +75,14 @@ User's request to enhance:`;
 
     const fullPrompt = `${systemPrompt}\n\n"${originalPrompt}"`;
 
-    // Generate enhanced prompt
-    const result = await model.generateContent(fullPrompt);
+    // Generate enhanced prompt with timeout
+    const timeoutPromise = new Promise((_, reject) => 
+      setTimeout(() => reject(new Error('Request timeout')), 25000)
+    );
+    
+    const generatePromise = model.generateContent(fullPrompt);
+    
+    const result = await Promise.race([generatePromise, timeoutPromise]);
     const response = await result.response;
     const enhancedPrompt = response.text();
 
