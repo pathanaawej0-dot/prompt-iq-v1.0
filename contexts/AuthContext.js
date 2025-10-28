@@ -39,17 +39,37 @@ export const AuthProvider = ({ children }) => {
         await setDoc(userRef, {
           uid: user.uid,
           email: user.email,
-          credits: 3, // Free credits for new users
-          subscriptionTier: 'free',
+          displayName: user.displayName || '',
+          subscription: {
+            planId: 'free',
+            planName: 'Free',
+            status: 'active',
+            credits: 5,
+            usedCredits: 0,
+            price: 0,
+            startDate: new Date(),
+            endDate: null, // Free plan doesn't expire
+          },
           createdAt: new Date(),
+          updatedAt: new Date(),
         });
         
         return {
           uid: user.uid,
           email: user.email,
-          credits: 3,
-          subscriptionTier: 'free',
+          displayName: user.displayName || '',
+          subscription: {
+            planId: 'free',
+            planName: 'Free',
+            status: 'active',
+            credits: 5,
+            usedCredits: 0,
+            price: 0,
+            startDate: new Date(),
+            endDate: null,
+          },
           createdAt: new Date(),
+          updatedAt: new Date(),
         };
       } else {
         return userSnap.data();
@@ -68,7 +88,31 @@ export const AuthProvider = ({ children }) => {
       const userSnap = await getDoc(userRef);
       
       if (userSnap.exists()) {
-        return userSnap.data();
+        const userData = userSnap.data();
+        
+        // Migrate old profile structure to new subscription structure
+        if (!userData.subscription && userData.credits !== undefined) {
+          const migratedData = {
+            ...userData,
+            subscription: {
+              planId: 'free',
+              planName: 'Free',
+              status: 'active',
+              credits: 5,
+              usedCredits: Math.max(0, 5 - userData.credits), // Convert old credits to used credits
+              price: 0,
+              startDate: new Date(),
+              endDate: null,
+            },
+            updatedAt: new Date(),
+          };
+          
+          // Update the user profile in Firestore
+          await updateDoc(userRef, migratedData);
+          return migratedData;
+        }
+        
+        return userData;
       }
       return null;
     } catch (error) {
@@ -77,20 +121,51 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  // Update user credits
-  const updateUserCredits = async (newCredits) => {
-    if (!user) return false;
+  // Update user credits (increment used credits)
+  const updateUserCredits = async () => {
+    if (!user || !userProfile) return false;
     
     try {
       const userRef = doc(db, 'users', user.uid);
-      await updateDoc(userRef, { credits: newCredits });
+      const newUsedCredits = (userProfile.subscription?.usedCredits || 0) + 1;
       
-      setUserProfile(prev => ({ ...prev, credits: newCredits }));
+      await updateDoc(userRef, { 
+        'subscription.usedCredits': newUsedCredits,
+        updatedAt: new Date(),
+      });
+      
+      setUserProfile(prev => ({ 
+        ...prev, 
+        subscription: {
+          ...prev.subscription,
+          usedCredits: newUsedCredits,
+        }
+      }));
       return true;
     } catch (error) {
       console.error('Error updating credits:', error);
       return false;
     }
+  };
+
+  // Get remaining credits
+  const getRemainingCredits = () => {
+    if (!userProfile) return 5; // Default for new users
+    
+    // New subscription structure
+    if (userProfile.subscription) {
+      const { credits, usedCredits } = userProfile.subscription;
+      const remaining = Math.max(0, (credits || 5) - (usedCredits || 0));
+      console.log('Credit calculation:', { credits, usedCredits, remaining });
+      return remaining;
+    }
+    
+    // Backward compatibility with old structure
+    if (userProfile.credits !== undefined) {
+      return Math.max(0, userProfile.credits);
+    }
+    
+    return 5; // Default free credits
   };
 
   // Sign up with email and password
@@ -239,6 +314,14 @@ export const AuthProvider = ({ children }) => {
     return () => unsubscribe();
   }, []);
 
+  // Refresh user profile from database
+  const refreshUserProfile = async () => {
+    if (user) {
+      const profile = await fetchUserProfile(user.uid);
+      setUserProfile(profile);
+    }
+  };
+
   const value = {
     user,
     userProfile,
@@ -249,6 +332,8 @@ export const AuthProvider = ({ children }) => {
     signOut,
     resetPassword,
     updateUserCredits,
+    getRemainingCredits,
+    refreshUserProfile,
   };
 
   return (

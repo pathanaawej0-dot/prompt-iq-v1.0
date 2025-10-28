@@ -138,12 +138,34 @@ User's request to enhance:`;
     }
 
     const userData = userDoc.data();
-    const currentCredits = userData.credits || 0;
-    const subscriptionTier = userData.subscriptionTier || 'free';
+    
+    // Handle both old and new user profile structures
+    let remainingCredits = 0;
+    let isUnlimited = false;
+    
+    if (userData.subscription) {
+      // New subscription structure
+      const { credits, usedCredits, planId } = userData.subscription;
+      remainingCredits = Math.max(0, credits - (usedCredits || 0));
+      isUnlimited = planId === 'business' && credits >= 1000;
+    } else if (userData.credits !== undefined) {
+      // Old structure - migrate and use
+      remainingCredits = userData.credits || 0;
+    } else {
+      // No credits info - give default free credits
+      remainingCredits = 5;
+    }
 
+    // Check if user has credits (unless unlimited)
+    if (!isUnlimited && remainingCredits <= 0) {
+      return NextResponse.json(
+        { error: 'Insufficient credits. Please upgrade your plan to continue.' },
+        { status: 403, headers }
+      );
+    }
 
     // Handle credit deduction and history saving
-    if (subscriptionTier === 'ultimate') {
+    if (isUnlimited) {
       // Save to history without deducting credits for ultimate users
       await adminDb.collection('prompts').add({
         uid: userId,
@@ -159,25 +181,11 @@ User's request to enhance:`;
         enhancedPrompt: cleanedPrompt,
         timestamp: new Date().toISOString(),
         creditsRemaining: 'unlimited',
-        subscriptionTier: subscriptionTier,
       }, { headers });
     } else {
-      // Check if user has enough credits
-      if (currentCredits <= 0) {
-        return NextResponse.json(
-          { 
-            error: 'Insufficient credits. Please upgrade your plan to continue.',
-            creditsRemaining: 0,
-            subscriptionTier,
-            needsUpgrade: true,
-          },
-          { status: 402, headers }
-        );
-      }
-
       // Use transaction to deduct credits and save to history
       try {
-        const newCredits = await adminDb.runTransaction(async (transaction) => {
+        const newCreditsRemaining = await adminDb.runTransaction(async (transaction) => {
           // Re-read user document in transaction
           const userSnapshot = await transaction.get(userRef);
           
@@ -186,31 +194,39 @@ User's request to enhance:`;
           }
 
           const currentUserData = userSnapshot.data();
-          const currentUserCredits = currentUserData.credits || 0;
-
-          // Double-check credits in transaction
-          if (currentUserCredits <= 0) {
-            throw new Error('Insufficient credits');
+          
+          // Handle credit deduction based on profile structure
+          if (currentUserData.subscription) {
+            // New subscription structure - increment usedCredits
+            const currentUsedCredits = currentUserData.subscription.usedCredits || 0;
+            const newUsedCredits = currentUsedCredits + 1;
+            
+            transaction.update(userRef, {
+              'subscription.usedCredits': newUsedCredits,
+              updatedAt: new Date(),
+            });
+            
+            return Math.max(0, currentUserData.subscription.credits - newUsedCredits);
+          } else {
+            // Old structure - decrement credits
+            const currentCredits = currentUserData.credits || 0;
+            const updatedCredits = Math.max(0, currentCredits - 1);
+            
+            transaction.update(userRef, {
+              credits: updatedCredits,
+            });
+            
+            return updatedCredits;
           }
+        });
 
-          const updatedCredits = currentUserCredits - 1;
-
-          // Update user credits
-          transaction.update(userRef, {
-            credits: updatedCredits,
-          });
-
-          // Add prompt to history
-          const promptRef = adminDb.collection('prompts').doc();
-          transaction.set(promptRef, {
-            uid: userId,
-            originalPrompt: originalPrompt.trim(),
-            enhancedPrompt: cleanedPrompt,
-            timestamp: new Date(),
-            creditsUsed: 1,
-          });
-
-          return updatedCredits;
+        // Add prompt to history (outside transaction for better performance)
+        await adminDb.collection('prompts').add({
+          uid: userId,
+          originalPrompt: originalPrompt.trim(),
+          enhancedPrompt: cleanedPrompt,
+          timestamp: new Date(),
+          creditsUsed: 1,
         });
 
         return NextResponse.json({
@@ -218,8 +234,7 @@ User's request to enhance:`;
           originalPrompt: originalPrompt.trim(),
           enhancedPrompt: cleanedPrompt,
           timestamp: new Date().toISOString(),
-          creditsRemaining: newCredits,
-          subscriptionTier,
+          creditsRemaining: newCreditsRemaining,
         }, { headers });
 
       } catch (transactionError) {
@@ -230,7 +245,6 @@ User's request to enhance:`;
             { 
               error: 'Insufficient credits. Please upgrade your plan to continue.',
               creditsRemaining: 0,
-              subscriptionTier,
               needsUpgrade: true,
             },
             { status: 402, headers }

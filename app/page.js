@@ -6,6 +6,7 @@ import { ArrowRight, Zap, Target, Sparkles, CheckCircle, Star } from 'lucide-rea
 import { useAuth } from '../contexts/AuthContext';
 import Button from '../components/ui/Button';
 import Card from '../components/ui/Card';
+import Footer from '../components/Footer';
 
 export default function Home() {
   const { user } = useAuth();
@@ -107,7 +108,7 @@ export default function Home() {
               transition={{ duration: 0.6, delay: 0.4 }}
               className="text-sm text-gray-500"
             >
-              ✨ 3 free enhancements • No credit card required • Cancel anytime
+              ✨ 5 free enhancements • No credit card required • Cancel anytime
             </motion.div>
           </div>
         </div>
@@ -348,11 +349,14 @@ export default function Home() {
               </Link>
             </div>
             <p className="text-sm text-blue-200 mt-4">
-              No credit card required • 3 free enhancements • Cancel anytime
+              No credit card required • 5 free enhancements • Cancel anytime
             </p>
           </motion.div>
         </div>
       </section>
+
+      {/* Footer */}
+      <Footer />
     </div>
   );
 }

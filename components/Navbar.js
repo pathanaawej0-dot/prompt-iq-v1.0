@@ -10,7 +10,7 @@ import Button from './ui/Button';
 
 const Navbar = () => {
   const [isOpen, setIsOpen] = useState(false);
-  const { user, userProfile, signOut } = useAuth();
+  const { user, userProfile, signOut, getRemainingCredits } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
 
@@ -72,18 +72,6 @@ const Navbar = () => {
           <div className="hidden md:flex items-center space-x-4">
             {user ? (
               <>
-                {/* Credits Display */}
-                {userProfile && (
-                  <div className="flex items-center space-x-2 px-3 py-1.5 bg-blue-50 rounded-full">
-                    <Zap className="w-4 h-4 text-blue-600" />
-                    <span className="text-sm font-medium text-blue-700">
-                      {userProfile.subscriptionTier === 'ultimate' 
-                        ? 'Unlimited' 
-                        : `${userProfile.credits} credits`
-                      }
-                    </span>
-                  </div>
-                )}
 
                 {/* User Profile & Logout */}
                 <div className="flex items-center space-x-3">
@@ -165,17 +153,6 @@ const Navbar = () => {
               {user ? (
                 <>
                   <hr className="my-3" />
-                  {userProfile && (
-                    <div className="flex items-center space-x-2 px-3 py-2 bg-blue-50 rounded-lg">
-                      <Zap className="w-4 h-4 text-blue-600" />
-                      <span className="text-sm font-medium text-blue-700">
-                        {userProfile.subscriptionTier === 'ultimate' 
-                          ? 'Unlimited credits' 
-                          : `${userProfile.credits} credits left`
-                        }
-                      </span>
-                    </div>
-                  )}
                   <button
                     onClick={handleSignOut}
                     className="flex items-center space-x-2 w-full px-3 py-2 rounded-lg text-sm font-medium text-red-600 hover:bg-red-50 transition-colors duration-200"

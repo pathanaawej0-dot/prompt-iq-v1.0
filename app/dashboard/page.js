@@ -21,7 +21,7 @@ export default function Dashboard() {
   const [error, setError] = useState('');
   const [showFeedbackModal, setShowFeedbackModal] = useState(false);
   
-  const { user, userProfile, loading, updateUserCredits } = useAuth();
+  const { user, userProfile, loading, updateUserCredits, getRemainingCredits, refreshUserProfile } = useAuth();
   const router = useRouter();
 
   // Redirect if not authenticated
@@ -30,6 +30,16 @@ export default function Dashboard() {
       router.push('/login');
     }
   }, [user, loading, router]);
+
+  // Handle payment success message
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.get('payment') === 'success') {
+      toast.success('🎉 Payment successful! Your subscription is now active.');
+      // Clean up URL
+      window.history.replaceState({}, document.title, '/dashboard');
+    }
+  }, []);
 
   const handleEnhancePrompt = async () => {
     if (!originalPrompt.trim()) {
@@ -41,9 +51,14 @@ export default function Dashboard() {
       return;
     }
 
-    // Check credits for non-ultimate users
-    if (userProfile?.subscriptionTier !== 'ultimate' && userProfile?.credits <= 0) {
-      toast.error('You have no credits left. Please upgrade your plan.');
+    // Check credits - STRICT LIMIT
+    const remainingCredits = getRemainingCredits();
+    if (remainingCredits <= 0) {
+      toast.error('❌ No credits remaining! Please upgrade your plan to continue.');
+      // Redirect to upgrade page
+      setTimeout(() => {
+        router.push('/upgrade');
+      }, 2000);
       return;
     }
 
@@ -79,12 +94,13 @@ export default function Dashboard() {
       setShowResult(true);
       console.log('Results should show now');
 
-      // Update user credits if provided in response
-      if (enhanceData.creditsRemaining !== undefined) {
-        updateUserCredits(enhanceData.creditsRemaining);
-      }
+      // Update user credits (increment used credits)
+      await updateUserCredits();
+      
+      // Refresh user profile to update credits display in header
+      await refreshUserProfile();
 
-      toast.success('Prompt enhanced and saved to history!');
+      toast.success('Prompt enhanced successfully!');
 
     } catch (error) {
       console.error('Enhancement error:', error);
@@ -116,7 +132,9 @@ export default function Dashboard() {
     return null; // Will redirect in useEffect
   }
 
-  const canEnhance = userProfile?.subscriptionTier === 'ultimate' || (userProfile?.credits > 0);
+  const remainingCredits = getRemainingCredits();
+  const canEnhance = remainingCredits > 0;
+
 
   return (
     <div className="min-h-screen py-8">
@@ -136,14 +154,34 @@ export default function Dashboard() {
           </p>
           
           {/* Credits Display */}
-          <div className="inline-flex items-center space-x-2 px-4 py-2 bg-blue-50 rounded-full">
-            <Zap className="w-5 h-5 text-blue-600" />
-            <span className="text-sm font-medium text-blue-700">
-              {userProfile?.subscriptionTier === 'ultimate' 
+          <div className={`inline-flex items-center space-x-2 px-4 py-2 rounded-full ${
+            remainingCredits <= 1 
+              ? 'bg-red-50 border border-red-200' 
+              : 'bg-blue-50'
+          }`}>
+            <Zap className={`w-5 h-5 ${
+              remainingCredits <= 1 
+                ? 'text-red-600' 
+                : 'text-blue-600'
+            }`} />
+            <span className={`text-sm font-medium ${
+              remainingCredits <= 1 
+                ? 'text-red-700' 
+                : 'text-blue-700'
+            }`}>
+              {userProfile?.subscription?.planId === 'business' && userProfile?.subscription?.credits >= 1000
                 ? 'Unlimited credits' 
-                : `${userProfile?.credits || 0} credits remaining`
+                : `${remainingCredits} credits remaining`
               }
             </span>
+            {remainingCredits <= 1 && (
+              <button
+                onClick={() => router.push('/upgrade')}
+                className="ml-2 text-xs bg-red-600 text-white px-2 py-1 rounded-full hover:bg-red-700 transition-colors"
+              >
+                Upgrade Now
+              </button>
+            )}
           </div>
         </motion.div>
 

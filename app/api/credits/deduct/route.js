@@ -50,18 +50,24 @@ export async function POST(request) {
     }
 
     const userData = userDoc.data();
-    const currentCredits = userData.credits || 0;
-    const subscriptionTier = userData.subscriptionTier || 'free';
+    
+    // Get credits from new subscription structure
+    const subscription = userData.subscription || {};
+    const currentCredits = subscription.credits || 0;
+    const usedCredits = subscription.usedCredits || 0;
+    const availableCredits = currentCredits - usedCredits;
+    const subscriptionTier = subscription.planId || 'free';
 
-    // Check if user has unlimited credits (ultimate plan)
-    if (subscriptionTier === 'ultimate') {
-      // Save to history without deducting credits
+    // Check if user has unlimited credits (business plan)
+    if (subscriptionTier === 'business' && subscription.credits >= 1000) {
+      // Save to history without deducting credits for business plan
       await adminDb.collection('prompts').add({
         uid: userId,
         originalPrompt: originalPrompt.trim(),
         enhancedPrompt: enhancedPrompt.trim(),
         timestamp: new Date(),
-        creditsUsed: 0, // No credits used for ultimate plan
+        creditsUsed: 0, // No credits deducted for business plan
+        planId: subscriptionTier
       });
 
       return NextResponse.json({
@@ -73,7 +79,7 @@ export async function POST(request) {
     }
 
     // Check if user has enough credits
-    if (currentCredits <= 0) {
+    if (availableCredits <= 0) {
       return NextResponse.json(
         { 
           error: 'Insufficient credits',
@@ -86,7 +92,8 @@ export async function POST(request) {
     }
 
     // Use a transaction to ensure atomicity
-    const newCredits = currentCredits - 1;
+    const newUsedCredits = usedCredits + 1;
+    const newAvailableCredits = currentCredits - newUsedCredits;
     
     try {
       await adminDb.runTransaction(async (transaction) => {
@@ -98,16 +105,20 @@ export async function POST(request) {
         }
 
         const currentUserData = userSnapshot.data();
-        const currentUserCredits = currentUserData.credits || 0;
+        const currentSubscription = currentUserData.subscription || {};
+        const currentAvailableCredits = (currentSubscription.credits || 0) - (currentSubscription.usedCredits || 0);
 
         // Double-check credits in transaction
-        if (currentUserCredits <= 0) {
+        if (currentAvailableCredits <= 0) {
           throw new Error('Insufficient credits');
         }
 
-        // Update user credits
+        // Update user subscription with new usedCredits
         transaction.update(userRef, {
-          credits: currentUserCredits - 1,
+          'subscription.usedCredits': (currentSubscription.usedCredits || 0) + 1,
+          // Keep backward compatibility
+          credits: Math.max(0, currentAvailableCredits - 1),
+          usedCredits: (currentUserData.usedCredits || 0) + 1
         });
 
         // Add prompt to history
@@ -118,12 +129,17 @@ export async function POST(request) {
           enhancedPrompt: enhancedPrompt.trim(),
           timestamp: new Date(),
           creditsUsed: 1,
+          planId: subscriptionTier,
+          subscriptionCredits: currentSubscription.credits,
+          subscriptionUsedCredits: (currentSubscription.usedCredits || 0) + 1
         });
       });
 
       return NextResponse.json({
         success: true,
-        creditsRemaining: newCredits,
+        creditsRemaining: newAvailableCredits,
+        totalCredits: currentCredits,
+        usedCredits: newUsedCredits,
         subscriptionTier,
         message: 'Prompt enhanced and saved to history',
       });

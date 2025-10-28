@@ -7,10 +7,8 @@ import { Check, Zap, Crown, Rocket, Star, ArrowRight } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import Button from '../../components/ui/Button';
 import Card from '../../components/ui/Card';
-import ComingSoonModal from '../../components/ComingSoonModal';
 
 export default function Pricing() {
-  const [paymentModal, setPaymentModal] = useState({ isOpen: false, planId: null });
   const { user } = useAuth();
 
   const plans = [
@@ -19,17 +17,12 @@ export default function Pricing() {
       name: 'Free',
       icon: Zap,
       price: 0,
-      credits: 3,
+      credits: 5,
       description: 'Perfect for trying out Prompt IQ',
       features: [
-        '3 prompt enhancements',
-        'Basic AI optimization',
-        'Copy to clipboard',
+        '5 enhanced prompts',
+        'Basic optimization',
         'Email support',
-      ],
-      limitations: [
-        'No monthly renewal',
-        'Limited to 3 total uses',
       ],
       popular: false,
       buttonText: 'Get Started Free',
@@ -40,62 +33,82 @@ export default function Pricing() {
       name: 'Starter',
       icon: Star,
       price: 99,
-      credits: 50,
-      description: 'Great for individuals and small projects',
+      credits: 30,
+      badge: 'Best for Students',
+      description: 'Great for students and beginners',
       features: [
-        '50 prompt enhancements/month',
-        'Advanced AI optimization',
-        'Prompt history',
-        'Copy to clipboard',
-        'Priority email support',
-        'Export prompts',
+        '30 enhanced prompts',
+        'Advanced optimization',
+        'Priority support',
+        '30-day history',
+      ],
+      popular: false,
+      buttonText: 'Subscribe Now - ₹99/month',
+      buttonVariant: 'primary',
+    },
+    {
+      id: 'creator',
+      name: 'Creator',
+      icon: Rocket,
+      price: 249,
+      credits: 100,
+      badge: '🔥 MOST POPULAR',
+      description: 'Perfect for freelancers and content creators',
+      features: [
+        '100 enhanced prompts',
+        'Pro optimization',
+        '24/7 priority support',
+        '90-day history',
+        'Custom templates',
+        'API access (beta)',
       ],
       popular: true,
-      buttonText: 'Subscribe Now - ₹99/month',
+      highlight: true,
+      buttonText: 'Subscribe Now - ₹249/month',
       buttonVariant: 'gradient',
     },
     {
       id: 'pro',
       name: 'Pro',
-      icon: Rocket,
-      price: 299,
-      credits: 200,
-      description: 'Perfect for professionals and teams',
+      icon: Crown,
+      price: 599,
+      credits: 300,
+      badge: 'Best for Power Users',
+      description: 'For professionals and small businesses',
       features: [
-        '200 prompt enhancements/month',
-        'Premium AI optimization',
-        'Advanced prompt history',
-        'Bulk operations',
-        'API access',
-        'Priority support',
-        'Custom templates',
-        'Analytics dashboard',
+        '300 enhanced prompts',
+        'Premium optimization',
+        'Dedicated support',
+        'Unlimited history',
+        'Custom template library',
+        'Full API access',
+        'Team collaboration (3 users)',
       ],
       popular: false,
-      buttonText: 'Subscribe Now - ₹299/month',
+      buttonText: 'Subscribe Now - ₹599/month',
       buttonVariant: 'primary',
     },
     {
-      id: 'ultimate',
-      name: 'Ultimate',
+      id: 'business',
+      name: 'Business',
       icon: Crown,
-      price: 999,
-      credits: 'unlimited',
-      description: 'For power users and enterprises',
+      price: 1499,
+      credits: 1000,
+      badge: 'Best for Teams',
+      description: 'For agencies and growing teams',
       features: [
-        'Unlimited prompt enhancements',
-        'Enterprise AI optimization',
-        'Complete prompt history',
-        'Bulk operations',
-        'Full API access',
-        '24/7 priority support',
-        'Custom templates',
-        'Advanced analytics',
-        'White-label options',
-        'Dedicated account manager',
+        '1000 enhanced prompts',
+        'Enterprise optimization',
+        'Priority 24/7 support',
+        'Unlimited history',
+        'Custom prompt library',
+        'Advanced API',
+        'Team collaboration (10 users)',
+        'Analytics dashboard',
+        'White-label option',
       ],
       popular: false,
-      buttonText: 'Contact Sales',
+      buttonText: 'Subscribe Now - ₹1,499/month',
       buttonVariant: 'primary',
     },
   ];
@@ -107,19 +120,15 @@ export default function Pricing() {
       return;
     }
 
-    if (planId === 'ultimate') {
-      // Contact sales for ultimate plan
-      window.location.href = 'mailto:sales@promptiq.com?subject=Ultimate Plan Inquiry';
-      return;
-    }
-
-    // For paid plans, open payment modal
+    // For paid plans, redirect to Razorpay checkout
     if (!user) {
       window.location.href = '/signup';
       return;
     }
 
-    setPaymentModal({ isOpen: true, planId });
+    // Redirect to coming soon page
+    const selectedPlan = plans.find(p => p.id === planId);
+    window.location.href = `/coming-soon?plan=${selectedPlan?.name}`;
   };
 
   const formatPrice = (price) => {
@@ -147,29 +156,9 @@ export default function Pricing() {
 
         </motion.div>
 
-        {/* Coming Soon Banner */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6, delay: 0.2 }}
-          className="mb-12"
-        >
-          <div className="bg-gradient-to-r from-orange-50 to-yellow-50 border border-orange-200 rounded-lg p-6 text-center">
-            <div className="flex items-center justify-center space-x-2 mb-2">
-              <Rocket className="w-6 h-6 text-orange-600" />
-              <h3 className="text-xl font-bold text-orange-800">Payments Coming Soon!</h3>
-            </div>
-            <p className="text-orange-700 mb-4">
-              We're finalizing our payment integration. Premium plans will be available very soon!
-            </p>
-            <div className="text-sm text-orange-600 font-medium">
-              🎉 For now, enjoy unlimited free enhancements while we prepare for launch!
-            </div>
-          </div>
-        </motion.div>
 
         {/* Pricing Cards */}
-        <div className="grid lg:grid-cols-4 gap-8 mb-16">
+        <div className="grid lg:grid-cols-5 gap-6 mb-16">
           {plans.map((plan, index) => (
             <motion.div
               key={plan.id}
@@ -178,20 +167,30 @@ export default function Pricing() {
               transition={{ duration: 0.6, delay: index * 0.1 }}
               className="relative"
             >
-              {plan.popular && (
-                <div className="absolute -top-4 left-1/2 transform -translate-x-1/2">
-                  <span className="bg-gradient-to-r from-blue-600 to-purple-600 text-white px-4 py-1 rounded-full text-sm font-medium">
-                    Most Popular
+              {plan.badge && (
+                <div className="absolute -top-4 left-1/2 transform -translate-x-1/2 z-10">
+                  <span className={`px-3 py-1 rounded-full text-xs font-medium whitespace-nowrap ${
+                    plan.popular 
+                      ? 'bg-gradient-to-r from-orange-500 to-red-500 text-white shadow-lg'
+                      : 'bg-blue-100 text-blue-700'
+                  }`}>
+                    {plan.badge}
                   </span>
                 </div>
               )}
               
               <Card 
-                className={`h-full ${
-                  plan.popular 
-                    ? 'border-blue-200 shadow-lg scale-105' 
-                    : 'border-gray-200'
+                className={`h-full transition-all duration-300 ${
+                  plan.highlight
+                    ? 'border-2 border-gradient-to-r from-orange-400 to-red-400 shadow-2xl scale-105 bg-gradient-to-br from-orange-50 to-red-50'
+                    : plan.popular
+                    ? 'border-blue-200 shadow-lg'
+                    : 'border-gray-200 hover:shadow-md'
                 }`}
+                style={plan.highlight ? {
+                  background: 'linear-gradient(135deg, #fff7ed 0%, #fef2f2 100%)',
+                  borderImage: 'linear-gradient(135deg, #fb923c, #ef4444) 1'
+                } : {}}
               >
                 <Card.Content className="p-8">
                   {/* Plan Header */}
@@ -288,8 +287,8 @@ export default function Pricing() {
                   What happens when I run out of credits?
                 </h3>
                 <p className="text-gray-600">
-                  You can upgrade your plan anytime to get more credits. Free users get 3 total credits, 
-                  while paid plans renew monthly.
+                  You can upgrade your plan anytime to get more credits. Free users get 5 credits per month, 
+                  while paid plans offer 30-1000 credits monthly.
                 </p>
               </div>
               
@@ -385,12 +384,6 @@ export default function Pricing() {
         </motion.div>
       </div>
 
-      {/* Coming Soon Modal */}
-      <ComingSoonModal
-        isOpen={paymentModal.isOpen}
-        onClose={() => setPaymentModal({ isOpen: false, planId: null })}
-        planId={paymentModal.planId}
-      />
     </div>
   );
 }
