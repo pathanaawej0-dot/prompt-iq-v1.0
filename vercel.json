@@ -1,0 +1,11 @@
+{
+  "version": 2,
+  "env": {
+    "USE_NEON_DB": "true"
+  },
+  "functions": {
+    "app/api/**/*.js": {
+      "maxDuration": 30
+    }
+  }
+}

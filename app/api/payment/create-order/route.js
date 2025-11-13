@@ -56,16 +56,18 @@ export async function POST(request) {
     // Define plan pricing
     const plans = {
       starter: {
-        monthly: 99,
-        yearly: 950, // 20% discount
+        monthly: 399,
+        yearly: 3990, // ~20% discount
         credits: 50,
         name: 'Starter Plan',
+        currency: 'INR',
       },
       pro: {
-        monthly: 299,
-        yearly: 2870, // 20% discount
+        monthly: 1599,
+        yearly: 15990, // ~20% discount
         credits: 200,
         name: 'Pro Plan',
+        currency: 'INR',
       },
     };
 
@@ -77,12 +79,13 @@ export async function POST(request) {
       );
     }
 
-    const amount = selectedPlan[billingCycle];
-    const currency = 'INR';
+    const price = selectedPlan[billingCycle];
+    const currency = selectedPlan.currency || 'INR';
+    const amount = price * 100; // Amount in paise
 
     // Create Razorpay order
     const options = {
-      amount: amount * 100, // Amount in paise
+      amount,
       currency,
       receipt: `order_${Date.now()}_${decodedToken.uid}`,
       notes: {
@@ -107,7 +110,8 @@ export async function POST(request) {
         name: selectedPlan.name,
         credits: selectedPlan.credits,
         billingCycle,
-        price: amount,
+        price,
+        currency,
       },
     });
 

@@ -32,7 +32,7 @@ export default function Pricing() {
       id: 'starter',
       name: 'Starter',
       icon: Star,
-      price: 99,
+      price: 399,
       credits: 30,
       badge: 'Best for Students',
       description: 'Great for students and beginners',
@@ -43,14 +43,14 @@ export default function Pricing() {
         '30-day history',
       ],
       popular: false,
-      buttonText: 'Subscribe Now - ₹99/month',
+      buttonText: 'Subscribe Now - ₹399/month',
       buttonVariant: 'primary',
     },
     {
       id: 'creator',
       name: 'Creator',
       icon: Rocket,
-      price: 249,
+      price: 799,
       credits: 100,
       badge: '🔥 MOST POPULAR',
       description: 'Perfect for freelancers and content creators',
@@ -64,14 +64,14 @@ export default function Pricing() {
       ],
       popular: true,
       highlight: true,
-      buttonText: 'Subscribe Now - ₹249/month',
+      buttonText: 'Subscribe Now - ₹799/month',
       buttonVariant: 'gradient',
     },
     {
       id: 'pro',
       name: 'Pro',
       icon: Crown,
-      price: 599,
+      price: 1599,
       credits: 300,
       badge: 'Best for Power Users',
       description: 'For professionals and small businesses',
@@ -85,14 +85,14 @@ export default function Pricing() {
         'Team collaboration (3 users)',
       ],
       popular: false,
-      buttonText: 'Subscribe Now - ₹599/month',
+      buttonText: 'Subscribe Now - ₹1,599/month',
       buttonVariant: 'primary',
     },
     {
       id: 'business',
       name: 'Business',
       icon: Crown,
-      price: 1499,
+      price: 3999,
       credits: 1000,
       badge: 'Best for Teams',
       description: 'For agencies and growing teams',
@@ -108,7 +108,7 @@ export default function Pricing() {
         'White-label option',
       ],
       popular: false,
-      buttonText: 'Subscribe Now - ₹1,499/month',
+      buttonText: 'Subscribe Now - ₹3,999/month',
       buttonVariant: 'primary',
     },
   ];
@@ -133,7 +133,7 @@ export default function Pricing() {
 
   const formatPrice = (price) => {
     if (price === 0) return 'Free';
-    return `₹${price}`;
+    return `₹${price.toLocaleString('en-IN')}`;
   };
 
   return (

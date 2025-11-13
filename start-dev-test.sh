@@ -1,0 +1,60 @@
+#!/bin/bash
+
+echo "🚀 Starting Prompt IQ Dev Server with Test Keys..."
+
+# Set test environment variables
+export NEXT_PUBLIC_FIREBASE_API_KEY="AIzaSyBSRxBESDVf2b77qS6fZuSg6upHBxG3Jtk"
+export NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN="prompt-iq-latest.firebaseapp.com"
+export NEXT_PUBLIC_FIREBASE_PROJECT_ID="prompt-iq-latest"
+export NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET="prompt-iq-latest.firebasestorage.app"
+export NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID="97427812353"
+export NEXT_PUBLIC_FIREBASE_APP_ID="1:97427812353:web:444bbfd793e6342c1dd000"
+export NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID="G-YK0GYZJQL9"
+
+# Firebase Admin
+export FIREBASE_CLIENT_EMAIL="firebase-adminsdk-fbsvc@prompt-iq-latest.iam.gserviceaccount.com"
+export FIREBASE_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----
+MIIEvgIBADANBgkqhkiG9w0BAQEFAASCBKgwggSkAgEAAoIBAQC/Uqe9TqJYCyEm
+j7mJWn19tqPDBvVpEu/OHbOXD752uGv9pQe3nM6RTXIEjz1WOqx6NutqbSvfYAbA
+Gpt4QUpFGvLGZyChkcIThkeQAO4uZcClwFW3zDHnRl+zN3+5c7e1Gs2MTMhk1f3T
+WmfOuKWLbWqjhGFv/IDH5g9vulEetqB6nsGE2BuxHAVkpgi4ZYVBNH+csAyYP6mb
+K5x74Y6tWGJFtWsnCGeDUVtRPSKO+2dpCSH3LKWdue1GtLj+9n8wWGj5EqM5YF5Q
+RPe0apZBKE/8TL+tEwVMkHZnIfXoAmFxi4I7ea5bbFdtvpTm8aGNgK5rx6oz/wgQ
+lb5anSvXAgMBAAECggEAEZfdseRJvHPljAC6bH2EPauuWnBI3+0sXRVRHuqFNrCV
+yaDD2WgTfLwU6INtfgDuPFzRgBti5esUI9Uuh7vlQv6L5Z+1GfZn1NjLutvDC0Qz
+F2rc1wZxblWD1lybo6eW9JHu5eBnqxIcgbN2CUXkfzJEFJ5HQX+ELh2jPMBy1jKH
+DI/XB0t1t47dsP3oIE8Uw+b9hkKSVPbBUt+lfYqYiRRzm6Nx3MfAiv8VIPvyLi0M
+dj81vFGxQXU3N5hV+w1CVfxtUi6BwMzoNjw0OO4iL65ghHS1moeeEhpQHgpu6xsz
+Ex6t3/8reZmkNUDeGC5pE4d7m7RriKz5u1lhexVeWQKBgQD4fL8+FJBDwqNVCaja
+R5I9BcyeYNcjZ2w/VgU/jQzCVQFhfCUFmDutzypGbi45R2VtJlnZwpQrJ+63z2GW
+gzBoWnwZvdMgM7lJJkZeeMklplOtUPIh6UC5RiN5q8Fs+O4uFhpeg4LLac1jHkCK
+zPW+/Fa6wyvEZoBP+bpxGYELXwKBgQDFG3bnqYWLNq6rTnQYtBpz4UaO4KQFRJMs
+sPaEIhQcJ98u1LD6ZRSWExEX5m6hfB9ppjSwMWQ519YuqADkXNa+6iIW67wQKrrm
+DHmkFKQXAMyDdFAOxTFRftvZJAWnF6QyaLoj1qzDAmUrc+o4BO9y70YRLHEGstw4
+K8tF7Z+qiQKBgDV46tKaLD1YqjtHe92VH0QgdlryrflBbUrn4PM/ECrVjhmDVJgy
+nU0W0psbZLkQwyPM5/Lza10qF7XYW8C+9HDQX/pOHhvE5a93HBeCWI7Qjxsx2xkv
+D62PCV1Kd7JSkza5rOz/0eqiFv+oZ+02k/+IX8WK8GUwRZZwQA3MljdzAoGBAJmi
+AJotDgQmiRrJOcCPkRbFfoObIP1iJ/zrqhnvnhEcGt+btJ5W7ybSkb45Q/3mi22D
+uQmkVeSoES+oj5lvq4p/YDbRY3KOe8MX8jAsToIHg2Dq5gO9O+WzpZSoeSd2S+tm
+qb+JcntFgKnP3b3wStshGVIFe8um2fOGXxiQUKVRAoGBAKemqHOKsINx4GAxDNqW
+Kw0F6x4mNe3FdqOFlKIuZIfpLTP2P9LRJBLVmxsdTI50eEHdUDZ2JIZ4voc8Bv1L
+q4egDANw+U8X3WFHH2C6p7SkAt1vZRdhv3GYbfE1faXiCu9jdvoArfuHECzim9aD
+BuvY9JFrDZyT2eeyuh0W2e+R
+-----END PRIVATE KEY-----"
+
+# Gemini AI
+export GEMINI_API_KEY="AIzaSyCx7mGbQzdBZBSEQUGCPG-ni7pt9rGGjgo"
+
+# Razorpay Test Keys
+export NEXT_PUBLIC_RAZORPAY_KEY_ID="rzp_test_RYvAEv2X8ymGqo"
+export RAZORPAY_KEY_SECRET="ea6I8mX1773ARQa0Z1NBQMZu"
+
+# NextAuth
+export NEXTAUTH_URL="http://localhost:3000"
+export NEXTAUTH_SECRET="prompt-iq-super-secret-key-2024-production-ready"
+
+echo "✅ Environment variables set with TEST KEYS"
+echo "🔥 Starting development server..."
+
+# Start the dev server
+npm run dev

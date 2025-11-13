@@ -1,8 +1,11 @@
 'use client';
 
+import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Copy, X, Sparkles } from 'lucide-react';
+import { Copy, X, Sparkles, BookOpen } from 'lucide-react';
 import Button from './Button';
+import FolderSelectionModal from './FolderSelectionModal';
+import { useAuth } from '../../contexts/AuthContext';
 import toast from 'react-hot-toast';
 
 export default function EnhancedPromptOverlay({ 
@@ -12,13 +15,71 @@ export default function EnhancedPromptOverlay({
   onClose, 
   onNewPrompt 
 }) {
+  const { user } = useAuth();
+  const [showAddToLibraryModal, setShowAddToLibraryModal] = useState(false);
   const handleCopy = async (type = 'enhanced') => {
     try {
       const textToCopy = type === 'enhanced' ? enhancedPrompt : originalPrompt;
-      await navigator.clipboard.writeText(textToCopy);
+      
+      // Try modern clipboard API first
+      if (navigator.clipboard && window.isSecureContext) {
+        await navigator.clipboard.writeText(textToCopy);
+      } else {
+        // Fallback for older browsers or non-HTTPS
+        const textArea = document.createElement('textarea');
+        textArea.value = textToCopy;
+        textArea.style.position = 'fixed';
+        textArea.style.left = '-999999px';
+        textArea.style.top = '-999999px';
+        document.body.appendChild(textArea);
+        textArea.focus();
+        textArea.select();
+        document.execCommand('copy');
+        textArea.remove();
+      }
+      
       toast.success(`${type === 'enhanced' ? 'Enhanced' : 'Original'} prompt copied to clipboard!`);
     } catch (error) {
-      toast.error('Failed to copy');
+      console.error('Copy error:', error);
+      toast.error('Failed to copy. Please try again.');
+    }
+  };
+
+  // Add enhanced prompt to library
+  const handleAddToLibrary = async (targetFolder) => {
+    if (!user?.uid) return;
+
+    try {
+      const token = await user.getIdToken();
+      const response = await fetch('/api/library/move-prompt', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userId: user.uid,
+          token,
+          promptId: 'enhanced-' + Date.now(), // Temporary ID
+          targetFolderId: targetFolder.id,
+          sourceType: 'enhanced',
+          originalPrompt,
+          enhancedPrompt,
+          title: 'Enhanced Prompt',
+          category: 'General',
+          useCase: 'Enhanced prompt from dashboard',
+          targetRole: 'General'
+        })
+      });
+
+      if (response.ok) {
+        toast.success(`Added to "${targetFolder.name}" folder!`);
+      } else {
+        const data = await response.json();
+        toast.error(data.error || 'Failed to add to library');
+      }
+    } catch (error) {
+      console.error('Error adding to library:', error);
+      toast.error('Failed to add to library');
+    } finally {
+      setShowAddToLibraryModal(false);
     }
   };
 
@@ -147,6 +208,16 @@ export default function EnhancedPromptOverlay({
                 </Button>
                 
                 <Button
+                  onClick={() => setShowAddToLibraryModal(true)}
+                  variant="outline"
+                  size="lg"
+                  className="flex items-center space-x-2"
+                >
+                  <BookOpen className="w-4 h-4" />
+                  <span>Add to Library</span>
+                </Button>
+                
+                <Button
                   onClick={onNewPrompt}
                   variant="outline"
                   size="lg"
@@ -160,6 +231,16 @@ export default function EnhancedPromptOverlay({
           </motion.div>
         </div>
       )}
+      
+      {/* Add to Library Modal */}
+      <FolderSelectionModal
+        isVisible={showAddToLibraryModal}
+        onClose={() => setShowAddToLibraryModal(false)}
+        onSelectFolder={handleAddToLibrary}
+        userId={user?.uid}
+        title="Add to Library"
+        description="Select a folder to save your enhanced prompt"
+      />
     </AnimatePresence>
   );
 }

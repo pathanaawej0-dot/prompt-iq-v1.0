@@ -8,10 +8,11 @@ import { useAuth } from '../../contexts/AuthContext';
 import Button from '../../components/ui/Button';
 import Card from '../../components/ui/Card';
 import Input from '../../components/ui/Input';
+import { getApiEndpoint } from '../../lib/api-config';
 import LoadingSpinner from '../../components/ui/LoadingSpinner';
 
 export default function UpgradePage() {
-  const { user, userProfile, loading } = useAuth();
+  const { user, userProfile, loading, refreshUserProfile } = useAuth();
   const router = useRouter();
   const [email, setEmail] = useState('');
   const [emailSubmitted, setEmailSubmitted] = useState(false);
@@ -29,8 +30,8 @@ export default function UpgradePage() {
     {
       id: 'starter',
       name: 'Starter',
-      price: 99,
-      discountedPrice: 89,
+      price: 399,
+      discountedPrice: 359,
       period: 'month',
       credits: 30,
       badge: 'Best for Students',
@@ -48,8 +49,8 @@ export default function UpgradePage() {
     {
       id: 'creator',
       name: 'Creator',
-      price: 249,
-      discountedPrice: 224,
+      price: 799,
+      discountedPrice: 719,
       period: 'month',
       credits: 100,
       badge: '🔥 MOST POPULAR',
@@ -70,8 +71,8 @@ export default function UpgradePage() {
     {
       id: 'pro',
       name: 'Pro',
-      price: 599,
-      discountedPrice: 539,
+      price: 1599,
+      discountedPrice: 1439,
       period: 'month',
       credits: 300,
       badge: 'Best for Power Users',
@@ -92,8 +93,8 @@ export default function UpgradePage() {
     {
       id: 'business',
       name: 'Business',
-      price: 1499,
-      discountedPrice: 1349,
+      price: 3999,
+      discountedPrice: 3599,
       period: 'month',
       credits: 1000,
       badge: 'Best for Teams',
@@ -190,7 +191,7 @@ export default function UpgradePage() {
         handler: async function (response) {
           try {
             // Verify payment
-            const verifyResponse = await fetch('/api/razorpay/verify-payment', {
+            const verifyResponse = await fetch(getApiEndpoint('PAYMENT_VERIFY'), {
               method: 'POST',
               headers: {
                 'Content-Type': 'application/json',
@@ -207,10 +208,13 @@ export default function UpgradePage() {
             const verifyData = await verifyResponse.json();
             
             if (verifyData.success) {
+              // Refresh user profile to get updated credits
+              await refreshUserProfile();
+              
               alert(`🎉 Payment Successful!\n\nPlan: ${verifyData.subscription.planName}\nCredits: ${verifyData.subscription.credits}\n\nYour subscription is now active!`);
               
-              // Refresh the page to update UI
-              window.location.reload();
+              // Navigate to dashboard to show updated credits
+              router.push('/dashboard');
             } else {
               throw new Error(verifyData.error || 'Payment verification failed');
             }

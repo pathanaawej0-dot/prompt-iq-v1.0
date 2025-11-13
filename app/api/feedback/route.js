@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
-import { adminAuth, adminDb } from '../../../lib/firebase-admin';
+import { adminAuth } from '../../../lib/firebase-admin';
+import { query } from '../../../lib/neon-db.js';
 
 export async function POST(request) {
   try {
@@ -42,24 +43,39 @@ export async function POST(request) {
       );
     }
 
-    const userId = decodedToken.uid;
+    const firebaseUid = decodedToken.uid;
 
-    // Get user data for context
-    const userRef = adminDb.collection('users').doc(userId);
-    const userDoc = await userRef.get();
-    
-    const userData = userDoc.exists ? userDoc.data() : {};
+    // Get user data from Neon for context
+    let userData = {};
+    try {
+      const userResult = await query(
+        'SELECT email, subscription_tier, credits FROM users WHERE firebase_uid = $1',
+        [firebaseUid]
+      );
+      
+      if (userResult.rows.length > 0) {
+        userData = userResult.rows[0];
+      }
+    } catch (userError) {
+      console.error('Error fetching user data:', userError);
+      // Continue anyway - we can still save feedback without user context
+    }
 
-    // Save feedback to Firebase
-    await adminDb.collection('feedback').add({
-      userId: userId,
-      userEmail: userData.email || decodedToken.email,
-      feedback: feedback.trim(),
-      rating: parseInt(rating),
-      timestamp: new Date(),
-      userTier: userData.subscriptionTier || 'free',
-      userCredits: userData.credits || 0,
-    });
+    // Save feedback to Neon Postgres
+    await query(`
+      INSERT INTO feedback (
+        firebase_uid, 
+        email, 
+        message, 
+        rating,
+        created_at
+      ) VALUES ($1, $2, $3, $4, NOW())
+    `, [
+      firebaseUid,
+      userData.email || decodedToken.email,
+      feedback.trim(),
+      parseInt(rating)
+    ]);
 
     return NextResponse.json({
       success: true,

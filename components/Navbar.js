@@ -4,7 +4,7 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter, usePathname } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Menu, X, Zap, User, LogOut, CreditCard, History } from 'lucide-react';
+import { Menu, X, Zap, User, LogOut, CreditCard, History, BookOpen, Gamepad2, Scale } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import Button from './ui/Button';
 
@@ -28,6 +28,9 @@ const Navbar = () => {
   // Navigation for logged in users (main nav)
   const userMainNavigation = [
     { name: 'Dashboard', href: '/dashboard' },
+    { name: 'Playground', href: '/playground' },
+    { name: 'Library', href: '/library' },
+    { name: 'Compare', href: '/compare' },
     { name: 'History', href: '/history' },
     { name: 'Upgrade', href: '/upgrade' },
   ];
@@ -35,6 +38,9 @@ const Navbar = () => {
   // User dropdown menu items
   const userDropdownNavigation = [
     { name: 'Dashboard', href: '/dashboard', icon: Zap },
+    { name: 'Playground', href: '/playground', icon: Gamepad2 },
+    { name: 'Library', href: '/library', icon: BookOpen },
+    { name: 'Compare', href: '/compare', icon: Scale },
     { name: 'History', href: '/history', icon: History },
     { name: 'Upgrade', href: '/pricing', icon: CreditCard },
   ];

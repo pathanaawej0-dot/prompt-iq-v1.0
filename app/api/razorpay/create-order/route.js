@@ -28,31 +28,41 @@ export async function POST(request) {
     const plans = {
       starter: {
         name: 'Starter',
-        price: 99,
+        price: 399,
+        amount: 39900,
+        currency: 'INR',
         credits: 30,
         description: 'Great for students and beginners'
       },
       creator: {
         name: 'Creator',
-        price: 249,
+        price: 799,
+        amount: 79900,
+        currency: 'INR',
         credits: 100,
         description: 'Perfect for freelancers and content creators'
       },
       pro: {
         name: 'Pro',
-        price: 599,
+        price: 1599,
+        amount: 159900,
+        currency: 'INR',
         credits: 300,
         description: 'For professionals and small businesses'
       },
       test: {
         name: 'Test',
         price: 1,
+        amount: 100,
+        currency: 'INR',
         credits: 5,
         description: 'Testing plan for development'
       },
       business: {
         name: 'Business',
-        price: 1499,
+        price: 3999,
+        amount: 399900,
+        currency: 'INR',
         credits: 1000,
         description: 'For agencies and growing teams'
       }
@@ -67,8 +77,8 @@ export async function POST(request) {
     const timestamp = Date.now().toString().slice(-8); // Last 8 digits
     const userIdShort = userId.slice(-8); // Last 8 chars of userId
     const options = {
-      amount: selectedPlan.price * 100, // Amount in paise
-      currency: 'INR',
+      amount: selectedPlan.amount,
+      currency: selectedPlan.currency,
       receipt: `rcpt_${userIdShort}_${timestamp}`, // Max 40 chars
       notes: {
         planId,
@@ -87,6 +97,7 @@ export async function POST(request) {
       planId,
       planName: selectedPlan.name,
       amount: selectedPlan.price,
+      currency: selectedPlan.currency,
       credits: selectedPlan.credits,
       status: 'created',
       createdAt: new Date().toISOString(),

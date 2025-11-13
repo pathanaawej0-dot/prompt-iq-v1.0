@@ -4,6 +4,26 @@ service cloud.firestore {
     // Users collection - users can only access their own data
     match /users/{userId} {
       allow read, write: if request.auth != null && request.auth.uid == userId;
+      
+      // Library subcollection - users can access their own library
+      match /library/{promptId} {
+        allow read, write: if request.auth != null && request.auth.uid == userId;
+      }
+      
+      // Folders subcollection - users can access their own folders
+      match /folders/{folderId} {
+        allow read, write: if request.auth != null && request.auth.uid == userId;
+      }
+      
+      // History subcollection - users can access their own history  
+      match /history/{historyId} {
+        allow read, write: if request.auth != null && request.auth.uid == userId;
+      }
+      
+      // Playground subcollection - users can access their own playground history
+      match /playground/{playgroundId} {
+        allow read, write: if request.auth != null && request.auth.uid == userId;
+      }
     }
     
     // Prompts collection - users can only access their own prompts
@@ -45,3 +65,6 @@ service cloud.firestore {
     }
   }
 }
+
+
+                                        

@@ -21,10 +21,10 @@ echo "-----BEGIN PRIVATE KEY-----\nMIIEvgIBADANBgkqhkiG9w0BAQEFAASCBKgwggSkAgEAA
 echo "Adding Gemini AI configuration..."
 echo "AIzaSyCx7mGbQzdBZBSEQUGCPG-ni7pt9rGGjgo" | vercel env add GEMINI_API_KEY production
 
-# Razorpay Configuration (placeholder values for now)
+# Razorpay Configuration (Test Keys)
 echo "Adding Razorpay configuration..."
-echo "rzp_test_placeholder" | vercel env add NEXT_PUBLIC_RAZORPAY_KEY_ID production
-echo "razorpay_secret_placeholder" | vercel env add RAZORPAY_KEY_SECRET production
+echo "rzp_test_RYvAEv2X8ymGqo" | vercel env add NEXT_PUBLIC_RAZORPAY_KEY_ID production
+echo "ea6I8mX1773ARQa0Z1NBQMZu" | vercel env add RAZORPAY_KEY_SECRET production
 
 # Next.js Configuration
 echo "Adding NextJS configuration..."

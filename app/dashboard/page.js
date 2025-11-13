@@ -11,6 +11,7 @@ import LoadingSpinner from '../../components/ui/LoadingSpinner';
 import EnhancementLoader from '../../components/ui/EnhancementLoader';
 import EnhancedPromptOverlay from '../../components/ui/EnhancedPromptOverlay';
 import FeedbackModal from '../../components/FeedbackModal';
+// Temporarily use direct API call until we fix the API client
 import toast from 'react-hot-toast';
 
 export default function Dashboard() {
@@ -24,12 +25,16 @@ export default function Dashboard() {
   const { user, userProfile, loading, updateUserCredits, getRemainingCredits, refreshUserProfile } = useAuth();
   const router = useRouter();
 
-  // Redirect if not authenticated
+  // Redirect if not authenticated or onboarding not complete
   useEffect(() => {
-    if (!loading && !user) {
-      router.push('/login');
+    if (!loading) {
+      if (!user) {
+        router.push('/login');
+      } else if (userProfile && userProfile.onboardingCompleted === false) {
+        router.push('/onboarding');
+      }
     }
-  }, [user, loading, router]);
+  }, [user, userProfile, loading, router]);
 
   // Handle payment success message
   useEffect(() => {
@@ -38,6 +43,16 @@ export default function Dashboard() {
       toast.success('🎉 Payment successful! Your subscription is now active.');
       // Clean up URL
       window.history.replaceState({}, document.title, '/dashboard');
+    }
+  }, []);
+
+  // Check for pre-filled prompt from library enhance
+  useEffect(() => {
+    const enhancePrompt = localStorage.getItem('enhancePrompt');
+    if (enhancePrompt) {
+      setOriginalPrompt(enhancePrompt);
+      localStorage.removeItem('enhancePrompt'); // Clean up
+      toast.success('Prompt loaded from library!');
     }
   }, []);
 
@@ -70,7 +85,7 @@ export default function Dashboard() {
       // Get Firebase token
       const token = await user.getIdToken();
 
-      // Call enhance API
+      // Call enhance API (now uses Neon)
       const enhanceResponse = await fetch('/api/enhance', {
         method: 'POST',
         headers: {
@@ -169,10 +184,7 @@ export default function Dashboard() {
                 ? 'text-red-700' 
                 : 'text-blue-700'
             }`}>
-              {userProfile?.subscription?.planId === 'business' && userProfile?.subscription?.credits >= 1000
-                ? 'Unlimited credits' 
-                : `${remainingCredits} credits remaining`
-              }
+              {`${remainingCredits} credits remaining`}
             </span>
             {remainingCredits <= 1 && (
               <button

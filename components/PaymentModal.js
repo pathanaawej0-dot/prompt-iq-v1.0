@@ -7,6 +7,7 @@ import { useAuth } from '../contexts/AuthContext';
 import Button from './ui/Button';
 import LoadingSpinner from './ui/LoadingSpinner';
 import toast from 'react-hot-toast';
+import { getApiEndpoint } from '../lib/api-config';
 
 const PaymentModal = ({ isOpen, onClose, planId, billingCycle = 'monthly' }) => {
   const [isProcessing, setIsProcessing] = useState(false);
@@ -38,15 +39,15 @@ const PaymentModal = ({ isOpen, onClose, planId, billingCycle = 'monthly' }) => 
   const plans = {
     starter: {
       name: 'Starter Plan',
-      monthly: 99,
-      yearly: 950,
+      monthly: 399,
+      yearly: 3990,
       credits: 50,
       description: 'Perfect for individuals',
     },
     pro: {
       name: 'Pro Plan',
-      monthly: 299,
-      yearly: 2870,
+      monthly: 1599,
+      yearly: 15990,
       credits: 200,
       description: 'Great for professionals',
     },
@@ -54,7 +55,9 @@ const PaymentModal = ({ isOpen, onClose, planId, billingCycle = 'monthly' }) => 
 
   const selectedPlan = plans[planId];
   const amount = selectedPlan?.[billingCycle];
-  const savings = billingCycle === 'yearly' ? Math.round((selectedPlan.monthly * 12 - selectedPlan.yearly)) : 0;
+  const savings = billingCycle === 'yearly'
+    ? selectedPlan.monthly * 12 - selectedPlan.yearly
+    : 0;
 
   const handlePayment = async () => {
     if (!user || !razorpayLoaded || !selectedPlan) {
@@ -110,7 +113,7 @@ const PaymentModal = ({ isOpen, onClose, planId, billingCycle = 'monthly' }) => 
         handler: async (response) => {
           try {
             // Verify payment
-            const verifyResponse = await fetch('/api/payment/verify', {
+            const verifyResponse = await fetch(getApiEndpoint('PAYMENT_VERIFY'), {
               method: 'POST',
               headers: {
                 'Content-Type': 'application/json',
@@ -210,14 +213,14 @@ const PaymentModal = ({ isOpen, onClose, planId, billingCycle = 'monthly' }) => 
                 <div className="flex items-center justify-between">
                   <div>
                     <div className="text-2xl font-bold text-gray-900">
-                      ₹{amount}
+                      ₹{amount?.toLocaleString('en-IN')}
                       <span className="text-sm font-normal text-gray-600">
                         /{billingCycle === 'yearly' ? 'year' : 'month'}
                       </span>
                     </div>
                     {billingCycle === 'yearly' && savings > 0 && (
                       <div className="text-sm text-green-600 font-medium">
-                        Save ₹{savings} per year
+                        Save ₹{savings.toLocaleString('en-IN')} per year
                       </div>
                     )}
                   </div>
@@ -293,7 +296,7 @@ const PaymentModal = ({ isOpen, onClose, planId, billingCycle = 'monthly' }) => 
                 ) : (
                   <>
                     <CreditCard className="w-5 h-5 mr-2" />
-                    Pay ₹{amount} Securely
+                    Pay ₹{amount?.toLocaleString('en-IN')} Securely
                   </>
                 )}
               </Button>

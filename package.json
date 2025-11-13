@@ -6,15 +6,23 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "test:neon": "node scripts/test-neon-connection.js",
+    "migrate:check": "curl http://localhost:3000/api/migrate",
+    "migrate:run": "curl -X POST http://localhost:3000/api/migrate",
+    "migrate:helper": "node scripts/migrate-to-neon.js",
+    "setup:neon": "node scripts/add-neon-config.js"
   },
   "dependencies": {
     "@google/generative-ai": "^0.2.1",
+    "dotenv": "^16.3.1",
     "firebase": "^10.14.1",
     "firebase-admin": "^12.7.0",
     "framer-motion": "^11.11.0",
+    "groq-sdk": "^0.35.0",
     "lucide-react": "^0.460.0",
     "next": "16.0.0",
+    "pg": "^8.11.3",
     "razorpay": "^2.9.6",
     "react": "19.2.0",
     "react-dom": "19.2.0",
@@ -22,6 +30,7 @@
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
+    "@types/pg": "^8.10.9",
     "eslint": "^9",
     "eslint-config-next": "16.0.0",
     "tailwindcss": "^4"

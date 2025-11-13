@@ -10,8 +10,7 @@ import {
   signOut as firebaseSignOut,
   sendPasswordResetEmail
 } from 'firebase/auth';
-import { doc, getDoc, setDoc, updateDoc } from 'firebase/firestore';
-import { auth, db } from '../lib/firebase';
+import { auth } from '../lib/firebase';
 import toast from 'react-hot-toast';
 
 const AuthContext = createContext({});
@@ -29,51 +28,12 @@ export const AuthProvider = ({ children }) => {
   const [userProfile, setUserProfile] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  // Create user profile in Firestore
+  // Create user profile via Neon API (handled automatically by API routes)
   const createUserProfile = async (user) => {
     try {
-      const userRef = doc(db, 'users', user.uid);
-      const userSnap = await getDoc(userRef);
-      
-      if (!userSnap.exists()) {
-        await setDoc(userRef, {
-          uid: user.uid,
-          email: user.email,
-          displayName: user.displayName || '',
-          subscription: {
-            planId: 'free',
-            planName: 'Free',
-            status: 'active',
-            credits: 5,
-            usedCredits: 0,
-            price: 0,
-            startDate: new Date(),
-            endDate: null, // Free plan doesn't expire
-          },
-          createdAt: new Date(),
-          updatedAt: new Date(),
-        });
-        
-        return {
-          uid: user.uid,
-          email: user.email,
-          displayName: user.displayName || '',
-          subscription: {
-            planId: 'free',
-            planName: 'Free',
-            status: 'active',
-            credits: 5,
-            usedCredits: 0,
-            price: 0,
-            startDate: new Date(),
-            endDate: null,
-          },
-          createdAt: new Date(),
-          updatedAt: new Date(),
-        };
-      } else {
-        return userSnap.data();
-      }
+      // The user profile will be created automatically by the API routes when first accessed
+      // Just fetch the profile, which will create it if it doesn't exist
+      return await fetchUserProfile(user.uid);
     } catch (error) {
       console.error('Error creating user profile:', error);
       toast.error('Failed to create user profile');
@@ -81,67 +41,65 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  // Fetch user profile
+  // Fetch user profile from Neon Postgres via API
   const fetchUserProfile = async (uid) => {
     try {
-      const userRef = doc(db, 'users', uid);
-      const userSnap = await getDoc(userRef);
-      
-      if (userSnap.exists()) {
-        const userData = userSnap.data();
-        
-        // Migrate old profile structure to new subscription structure
-        if (!userData.subscription && userData.credits !== undefined) {
-          const migratedData = {
-            ...userData,
-            subscription: {
-              planId: 'free',
-              planName: 'Free',
-              status: 'active',
-              credits: 5,
-              usedCredits: Math.max(0, 5 - userData.credits), // Convert old credits to used credits
-              price: 0,
-              startDate: new Date(),
-              endDate: null,
-            },
-            updatedAt: new Date(),
-          };
-          
-          // Update the user profile in Firestore
-          await updateDoc(userRef, migratedData);
-          return migratedData;
-        }
-        
-        return userData;
+      const token = await auth.currentUser?.getIdToken();
+      if (!token) {
+        console.error('No auth token available');
+        return null;
       }
-      return null;
+
+      const response = await fetch('/api/user/profile', {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (response.ok) {
+        const userData = await response.json();
+        return userData;
+      } else {
+        console.error('Failed to fetch user profile:', response.status);
+        return null;
+      }
     } catch (error) {
       console.error('Error fetching user profile:', error);
       return null;
     }
   };
 
-  // Update user credits (increment used credits)
-  const updateUserCredits = async () => {
+  // Update user credits via Neon API
+  const updateUserCredits = async (creditsToAdd = null) => {
     if (!user || !userProfile) return false;
     
     try {
-      const userRef = doc(db, 'users', user.uid);
-      const newUsedCredits = (userProfile.subscription?.usedCredits || 0) + 1;
+      const token = await user.getIdToken();
       
-      await updateDoc(userRef, { 
-        'subscription.usedCredits': newUsedCredits,
-        updatedAt: new Date(),
+      const response = await fetch('/api/credits/deduct', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          creditsToAdd: creditsToAdd,
+        }),
       });
-      
-      setUserProfile(prev => ({ 
-        ...prev, 
-        subscription: {
-          ...prev.subscription,
-          usedCredits: newUsedCredits,
+
+      if (response.ok) {
+        // Refresh user profile to get updated credits
+        const updatedProfile = await fetchUserProfile(user.uid);
+        if (updatedProfile) {
+          setUserProfile(updatedProfile);
         }
-      }));
-      return true;
+        return true;
+      } else {
+        console.error('Failed to update credits:', response.status);
+        return false;
+      }
     } catch (error) {
       console.error('Error updating credits:', error);
       return false;
@@ -166,6 +124,41 @@ export const AuthProvider = ({ children }) => {
     }
     
     return 5; // Default free credits
+  };
+
+  const completeOnboarding = async (answers) => {
+    if (!user) {
+      return { success: false, error: 'User not authenticated' };
+    }
+
+    try {
+      const token = await user.getIdToken();
+      const response = await fetch('/api/user/profile', {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          onboardingCompleted: true,
+          onboarding: {
+            ...answers,
+            completedAt: new Date().toISOString(),
+          },
+        }),
+      });
+
+      if (response.ok) {
+        const updatedProfile = await response.json();
+        setUserProfile(updatedProfile);
+        return { success: true };
+      } else {
+        throw new Error('Failed to update profile');
+      }
+    } catch (error) {
+      console.error('Error completing onboarding:', error);
+      return { success: false, error: 'Failed to save onboarding data' };
+    }
   };
 
   // Sign up with email and password
@@ -334,6 +327,7 @@ export const AuthProvider = ({ children }) => {
     updateUserCredits,
     getRemainingCredits,
     refreshUserProfile,
+    completeOnboarding,
   };
 
   return (

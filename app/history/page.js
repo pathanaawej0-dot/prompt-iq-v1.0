@@ -3,14 +3,13 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
-import { History, Copy, Clock, Search, Filter, ArrowRight, Trash2, Eye, X } from 'lucide-react';
-import { collection, query, where, orderBy, onSnapshot, deleteDoc, doc } from 'firebase/firestore';
+import { History, Copy, Clock, Search, Filter, ArrowRight, Trash2, Eye, X, BookOpen } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
-import { db } from '../../lib/firebase';
 import Button from '../../components/ui/Button';
 import Card from '../../components/ui/Card';
 import Input from '../../components/ui/Input';
 import LoadingSpinner from '../../components/ui/LoadingSpinner';
+import FolderSelectionModal from '../../components/ui/FolderSelectionModal';
 import toast from 'react-hot-toast';
 
 export default function HistoryPage() {
@@ -18,8 +17,11 @@ export default function HistoryPage() {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [sortBy, setSortBy] = useState('newest');
+  const [sourceFilter, setSourceFilter] = useState('all'); // Add source filter
   const [filteredPrompts, setFilteredPrompts] = useState([]);
   const [viewModal, setViewModal] = useState(null);
+  const [showAddToLibraryModal, setShowAddToLibraryModal] = useState(false);
+  const [promptToAdd, setPromptToAdd] = useState(null);
   
   const { user, loading: authLoading } = useAuth();
   const router = useRouter();
@@ -31,58 +33,45 @@ export default function HistoryPage() {
     }
   }, [user, authLoading, router]);
 
-  // Fetch prompts from Firestore
-  useEffect(() => {
+  // Fetch history from Neon API
+  const fetchHistory = async () => {
     if (!user) {
-      console.log('❌ No user found for history fetch');
+      console.log('❌ No user found, skipping history fetch');
+      setLoading(false);
       return;
     }
     
-    console.log('✅ User found:', user.uid);
-    console.log('🔍 Attempting to fetch prompts for user:', user.uid);
-    
-    // Simplified query without orderBy to avoid index requirement
-    const q = query(
-      collection(db, 'prompts'),
-      where('uid', '==', user.uid)
-    );
+    try {
+      console.log('✅ User found:', user.uid);
+      console.log('🔍 Fetching prompts from Neon API for user:', user.uid);
+      
+      const token = await user.getIdToken();
+      const response = await fetch('/api/history', {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+      });
 
-    const unsubscribe = onSnapshot(q, (querySnapshot) => {
-      console.log('📊 Query snapshot received');
-      console.log('📊 Query size:', querySnapshot.size);
-      console.log('📊 Query empty:', querySnapshot.empty);
-      
-      const promptsData = [];
-      querySnapshot.forEach((doc) => {
-        console.log('📄 Document ID:', doc.id);
-        console.log('📄 Document data:', doc.data());
-        promptsData.push({
-          id: doc.id,
-          ...doc.data(),
-        });
-      });
-      
-      console.log('✅ Total prompts loaded:', promptsData.length);
-      
-      // Sort on client side by timestamp
-      promptsData.sort((a, b) => {
-        const aTime = a.timestamp?.toDate?.() || new Date(a.timestamp) || new Date(0);
-        const bTime = b.timestamp?.toDate?.() || new Date(b.timestamp) || new Date(0);
-        return bTime - aTime; // Descending order (newest first)
-      });
-      
-      setPrompts(promptsData);
-      setLoading(false);
-    }, (error) => {
-      console.error('🚨 FIRESTORE ERROR:', error);
-      console.error('🚨 Error code:', error.code);
-      console.error('🚨 Error message:', error.message);
-      console.error('🚨 Full error:', error);
+      if (response.ok) {
+        const data = await response.json();
+        console.log('✅ Total prompts loaded from Neon:', data.history.length);
+        setPrompts(data.history);
+      } else {
+        console.error('Failed to fetch history:', response.status);
+        toast.error('Failed to load prompt history');
+      }
+    } catch (error) {
+      console.error('🚨 NEON API ERROR:', error);
       toast.error('Failed to load prompt history: ' + error.message);
+    } finally {
       setLoading(false);
-    });
+    }
+  };
 
-    return () => unsubscribe();
+  useEffect(() => {
+    fetchHistory();
   }, [user]);
 
   // Filter and sort prompts
@@ -92,9 +81,16 @@ export default function HistoryPage() {
     // Apply search filter
     if (searchTerm) {
       filtered = filtered.filter(prompt =>
-        prompt.originalPrompt.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        prompt.enhancedPrompt.toLowerCase().includes(searchTerm.toLowerCase())
+        (prompt.originalPrompt?.toLowerCase().includes(searchTerm.toLowerCase())) ||
+        (prompt.enhancedPrompt?.toLowerCase().includes(searchTerm.toLowerCase())) ||
+        (prompt.prompt?.toLowerCase().includes(searchTerm.toLowerCase())) ||
+        (prompt.result?.toLowerCase().includes(searchTerm.toLowerCase()))
       );
+    }
+
+    // Apply source filter
+    if (sourceFilter !== 'all') {
+      filtered = filtered.filter(prompt => prompt.source === sourceFilter);
     }
 
     // Apply sorting
@@ -105,22 +101,42 @@ export default function HistoryPage() {
         case 'oldest':
           return a.timestamp?.toDate() - b.timestamp?.toDate();
         case 'longest':
-          return b.enhancedPrompt.length - a.enhancedPrompt.length;
+          return (b.enhancedPrompt?.length || 0) - (a.enhancedPrompt?.length || 0);
         case 'shortest':
-          return a.enhancedPrompt.length - b.enhancedPrompt.length;
+          return (a.enhancedPrompt?.length || 0) - (b.enhancedPrompt?.length || 0);
         default:
           return 0;
       }
     });
 
     setFilteredPrompts(filtered);
-  }, [prompts, searchTerm, sortBy]);
+  }, [prompts, searchTerm, sortBy, sourceFilter]);
 
   const handleCopyPrompt = async (prompt, type = 'enhanced') => {
     try {
-      const textToCopy = type === 'enhanced' ? prompt.enhancedPrompt : prompt.originalPrompt;
+      let textToCopy;
+      let successMessage;
+      
+      switch(type) {
+        case 'enhanced':
+          textToCopy = prompt.enhancedPrompt || prompt.prompt || '';
+          successMessage = 'Enhanced prompt copied to clipboard!';
+          break;
+        case 'original':
+          textToCopy = prompt.originalPrompt || prompt.prompt || '';
+          successMessage = 'Original prompt copied to clipboard!';
+          break;
+        case 'result':
+          textToCopy = prompt.result || prompt.aiResponse || '';
+          successMessage = 'AI response copied to clipboard!';
+          break;
+        default:
+          textToCopy = prompt.enhancedPrompt || prompt.prompt || '';
+          successMessage = 'Enhanced prompt copied to clipboard!';
+      }
+      
       await navigator.clipboard.writeText(textToCopy);
-      toast.success(`${type === 'enhanced' ? 'Enhanced' : 'Original'} prompt copied to clipboard!`);
+      toast.success(successMessage);
     } catch (error) {
       console.error('Copy error:', error);
       // Fallback for older browsers
@@ -131,10 +147,50 @@ export default function HistoryPage() {
         textArea.select();
         document.execCommand('copy');
         document.body.removeChild(textArea);
-        toast.success(`${type === 'enhanced' ? 'Enhanced' : 'Original'} prompt copied to clipboard!`);
+        toast.success(successMessage);
       } catch (fallbackError) {
         toast.error('Failed to copy to clipboard');
       }
+    }
+  };
+
+  // Add prompt to library
+  const handleAddToLibrary = async (targetFolder) => {
+    if (!promptToAdd || !user?.uid) return;
+
+    try {
+      const token = await user.getIdToken();
+      const response = await fetch('/api/library/move-prompt', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userId: user.uid,
+          token,
+          promptId: promptToAdd.id,
+          targetFolderId: targetFolder.id,
+          sourceType: 'history'
+        })
+      });
+
+      if (response.ok) {
+        toast.success(`Added to "${targetFolder.name}" folder!`);
+      } else {
+        const data = await response.json();
+        console.error('Add to library error:', data);
+        
+        if (data.availableIds) {
+          console.log('Available history IDs:', data.availableIds);
+          console.log('Requested ID:', data.requestedId);
+        }
+        
+        toast.error(data.error || 'Failed to add to library');
+      }
+    } catch (error) {
+      console.error('Error adding to library:', error);
+      toast.error('Failed to add to library');
+    } finally {
+      setShowAddToLibraryModal(false);
+      setPromptToAdd(null);
     }
   };
 
@@ -148,8 +204,22 @@ export default function HistoryPage() {
     }
 
     try {
-      await deleteDoc(doc(db, 'prompts', promptId));
-      toast.success('Prompt deleted successfully');
+      const token = await user.getIdToken();
+      const response = await fetch(`/api/history?id=${promptId}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (response.ok) {
+        toast.success('Prompt deleted successfully');
+        // Refresh the history
+        fetchHistory();
+      } else {
+        toast.error('Failed to delete prompt');
+      }
     } catch (error) {
       console.error('Error deleting prompt:', error);
       toast.error('Failed to delete prompt');
@@ -158,7 +228,7 @@ export default function HistoryPage() {
 
   const formatDate = (timestamp) => {
     if (!timestamp) return 'Unknown date';
-    const date = timestamp.toDate();
+    const date = new Date(timestamp);
     return new Intl.DateTimeFormat('en-US', {
       year: 'numeric',
       month: 'short',
@@ -224,6 +294,15 @@ export default function HistoryPage() {
                 </div>
                 <div className="flex items-center space-x-2">
                   <Filter className="w-5 h-5 text-gray-400" />
+                  <select
+                    value={sourceFilter}
+                    onChange={(e) => setSourceFilter(e.target.value)}
+                    className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  >
+                    <option value="all">All Sources</option>
+                    <option value="playground">Playground</option>
+                    <option value="dashboard">Dashboard</option>
+                  </select>
                   <select
                     value={sortBy}
                     onChange={(e) => setSortBy(e.target.value)}
@@ -304,6 +383,15 @@ export default function HistoryPage() {
                         <span className="text-sm text-gray-600">
                           {formatDate(prompt.timestamp)}
                         </span>
+                        {prompt.source && (
+                          <span className={`px-2 py-1 text-xs font-medium rounded-full ${
+                            prompt.source === 'playground' 
+                              ? 'bg-green-100 text-green-800' 
+                              : 'bg-blue-100 text-blue-800'
+                          }`}>
+                            {prompt.source === 'playground' ? 'Playground' : 'Dashboard'}
+                          </span>
+                        )}
                       </div>
                       <Button
                         onClick={() => handleDeletePrompt(prompt.id)}
@@ -336,10 +424,23 @@ export default function HistoryPage() {
                               onClick={() => handleCopyPrompt(prompt, 'original')}
                               variant="ghost"
                               size="sm"
-                              className="text-gray-500 hover:text-gray-700"
+                              className="text-gray-600 hover:text-gray-700"
                               title="Copy original prompt"
                             >
                               <Copy className="w-4 h-4" />
+                            </Button>
+                            <Button
+                              onClick={() => {
+                                console.log('Adding original prompt to library:', prompt);
+                                setPromptToAdd(prompt);
+                                setShowAddToLibraryModal(true);
+                              }}
+                              variant="ghost"
+                              size="sm"
+                              className="text-green-500 hover:text-green-700"
+                              title="Add to library"
+                            >
+                              <BookOpen className="w-4 h-4" />
                             </Button>
                           </div>
                         </div>
@@ -353,7 +454,7 @@ export default function HistoryPage() {
                       {/* Enhanced Prompt */}
                       <div>
                         <div className="flex items-center justify-between mb-2">
-                          <h4 className="text-sm font-medium text-gray-700">Enhanced Prompt</h4>
+                          <h4 className="text-sm font-medium text-blue-700">Enhanced Prompt</h4>
                           <div className="flex items-center space-x-1">
                             <Button
                               onClick={() => handleViewPrompt(prompt)}
@@ -373,25 +474,67 @@ export default function HistoryPage() {
                             >
                               <Copy className="w-4 h-4" />
                             </Button>
+                            <Button
+                              onClick={() => {
+                                console.log('Adding enhanced prompt to library:', prompt);
+                                setPromptToAdd(prompt);
+                                setShowAddToLibraryModal(true);
+                              }}
+                              variant="ghost"
+                              size="sm"
+                              className="text-green-600 hover:text-green-700 hover:bg-green-50"
+                              title="Add to library"
+                            >
+                              <BookOpen className="w-4 h-4" />
+                            </Button>
                           </div>
                         </div>
                         <div className="bg-blue-50 p-3 rounded-lg border border-blue-200">
                           <p className="text-sm text-gray-800 line-clamp-4">
-                            {prompt.enhancedPrompt}
+                            {prompt.enhancedPrompt || prompt.prompt || 'No enhanced prompt available'}
                           </p>
                         </div>
                       </div>
 
-                      {/* Stats */}
-                      <div className="flex items-center justify-between pt-2 border-t border-gray-100">
-                        <div className="flex items-center space-x-4 text-xs text-gray-500">
-                          <span>Original: {prompt.originalPrompt.length} chars</span>
-                          <span>Enhanced: {prompt.enhancedPrompt.length} chars</span>
-                          <span className="text-green-600">
-                            +{Math.round(((prompt.enhancedPrompt.length - prompt.originalPrompt.length) / prompt.originalPrompt.length) * 100)}% improvement
-                          </span>
+                      {/* AI Response (for playground entries) */}
+                      {prompt.source === 'playground' && prompt.aiResponse && (
+                        <div>
+                          <div className="flex items-center justify-between mb-2">
+                            <h4 className="text-sm font-medium text-green-700">AI Response</h4>
+                            <div className="flex items-center space-x-1">
+                              <Button
+                                onClick={() => handleCopyPrompt(prompt, 'aiResponse')}
+                                variant="ghost"
+                                size="sm"
+                                className="text-green-600 hover:text-green-700 hover:bg-green-50"
+                                title="Copy AI response"
+                              >
+                                <Copy className="w-4 h-4" />
+                              </Button>
+                            </div>
+                          </div>
+                          <div className="bg-green-50 p-3 rounded-lg border border-green-200">
+                            <p className="text-sm text-gray-800 line-clamp-4">
+                              {prompt.aiResponse}
+                            </p>
+                          </div>
                         </div>
-                      </div>
+                      )}
+
+                      {/* Stats */}
+                      {prompt.originalPrompt && prompt.enhancedPrompt && (
+                        <div className="flex items-center justify-between pt-2 border-t border-gray-100">
+                          <div className="flex items-center space-x-4 text-xs text-gray-500">
+                            <span>Original: {prompt.originalPrompt?.length || 0} chars</span>
+                            <span>Enhanced: {prompt.enhancedPrompt?.length || 0} chars</span>
+                            {prompt.originalPrompt?.length > 0 && (
+                              <span className="text-green-600">
+                                +{Math.round(((prompt.enhancedPrompt?.length - prompt.originalPrompt?.length) / prompt.originalPrompt?.length) * 100)}% improvement
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      )}
                     </div>
                   </Card.Content>
                 </Card>
@@ -483,39 +626,54 @@ export default function HistoryPage() {
                   </div>
                   <div className="bg-blue-50 p-4 rounded-xl border border-blue-200">
                     <p className="text-gray-800 whitespace-pre-wrap leading-relaxed">
-                      {viewModal.enhancedPrompt}
+                      {viewModal.enhancedPrompt || viewModal.prompt || 'No enhanced prompt available'}
                     </p>
                   </div>
                   <div className="mt-2 text-xs text-gray-500">
-                    {viewModal.enhancedPrompt.length} characters
+                    {(viewModal.enhancedPrompt || viewModal.prompt || '').length} characters
                   </div>
                 </div>
 
                 {/* Stats */}
-                <div className="bg-gradient-to-r from-green-50 to-blue-50 p-4 rounded-xl border border-green-200">
-                  <h4 className="text-sm font-semibold text-gray-900 mb-2">Enhancement Stats</h4>
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
-                    <div>
-                      <span className="text-gray-600">Original Length:</span>
-                      <span className="ml-2 font-medium">{viewModal.originalPrompt.length} chars</span>
-                    </div>
-                    <div>
-                      <span className="text-gray-600">Enhanced Length:</span>
-                      <span className="ml-2 font-medium">{viewModal.enhancedPrompt.length} chars</span>
-                    </div>
-                    <div>
-                      <span className="text-gray-600">Improvement:</span>
-                      <span className="ml-2 font-medium text-green-600">
-                        +{Math.round(((viewModal.enhancedPrompt.length - viewModal.originalPrompt.length) / viewModal.originalPrompt.length) * 100)}%
-                      </span>
+                {viewModal.originalPrompt && viewModal.enhancedPrompt && (
+                  <div className="bg-gradient-to-r from-green-50 to-blue-50 p-4 rounded-xl border border-green-200">
+                    <h4 className="text-sm font-semibold text-gray-900 mb-2">Enhancement Stats</h4>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+                      <div>
+                        <span className="text-gray-600">Original Length:</span>
+                        <span className="ml-2 font-medium">{viewModal.originalPrompt?.length || 0} chars</span>
+                      </div>
+                      <div>
+                        <span className="text-gray-600">Enhanced Length:</span>
+                        <span className="ml-2 font-medium">{viewModal.enhancedPrompt?.length || 0} chars</span>
+                      </div>
+                      <div>
+                        <span className="text-gray-600">Improvement:</span>
+                        <span className="ml-2 font-medium text-green-600">
+                          +{Math.round((((viewModal.enhancedPrompt?.length || 0) - (viewModal.originalPrompt?.length || 0)) / (viewModal.originalPrompt?.length || 1)) * 100)}%
+                        </span>
+                      </div>
                     </div>
                   </div>
-                </div>
+                )}
               </div>
             </div>
           </motion.div>
         </div>
       )}
+
+      {/* Add to Library Modal */}
+      <FolderSelectionModal
+        isVisible={showAddToLibraryModal}
+        onClose={() => {
+          setShowAddToLibraryModal(false);
+          setPromptToAdd(null);
+        }}
+        onSelectFolder={handleAddToLibrary}
+        userId={user?.uid}
+        title="Add to Library"
+        description={`Select a folder to save "${promptToAdd?.title || 'this prompt'}"`}
+      />
     </div>
   );
 }
